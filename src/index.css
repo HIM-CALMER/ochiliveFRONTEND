@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ochi-bg: #060712;
+  --ochi-surface: #121a2c;
+  --ochi-accent: #7d5f79;
+  --ochi-accent-10: rgba(125, 95, 121, 0.1);
+  --ochi-accent-20: rgba(125, 95, 121, 0.2);
+  --ochi-accent-30: rgba(125, 95, 121, 0.3);
+  --ochi-accent-40: rgba(125, 95, 121, 0.4);
+  --ochi-accent-80: rgba(125, 95, 121, 0.8);
+  --ochi-muted: #7f8a9d;
+  --ochi-text: #e7e9ef;
+}
+
+/* Mature palette overrides for existing Tailwind rose/pink utilities */
+.bg-rose-500,
+.bg-pink-500,
+.bg-rose-600,
+.bg-pink-600 {
+  background-color: var(--ochi-accent) !important;
+}
+.bg-rose-500\/10,
+.bg-pink-500\/10,
+.bg-rose-500\/15,
+.bg-rose-500\/20,
+.bg-rose-500\/30,
+.bg-rose-500\/40,
+.bg-pink-500\/15,
+.bg-pink-500\/20,
+.bg-pink-500\/30,
+.bg-pink-500\/40 {
+  background-color: var(--ochi-accent-10) !important;
+}
+.text-rose-300,
+.text-pink-300,
+.text-rose-200,
+.text-pink-200,
+.text-rose-100 {
+  color: var(--ochi-accent) !important;
+}
+.border-rose-400\/30,
+.border-rose-400\/40,
+.border-pink-400\/30,
+.border-pink-400\/40,
+.border-rose-500\/20 {
+  border-color: var(--ochi-accent-20) !important;
+}
+.hover\:bg-rose-400:hover,
+.hover\:bg-pink-500:hover,
+.hover\:bg-pink-500\/10:hover,
+.hover\:bg-rose-500:hover,
+.hover\:bg-rose-500\/10:hover {
+  background-color: var(--ochi-accent-80) !important;
+}
+.hover\:text-rose-200:hover,
+.hover\:text-pink-300:hover,
+.hover\:text-pink-200:hover,
+.hover\:text-rose-300:hover {
+  color: var(--ochi-accent) !important;
+}
+.hover\:border-rose-400:hover,
+.hover\:border-pink-400:hover {
+  border-color: var(--ochi-accent-20) !important;
+}
+.from-rose-500 {
+  --tw-gradient-from: var(--ochi-accent);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(125, 95, 121, 0));
+}
+.to-rose-500 {
+  --tw-gradient-to: var(--ochi-accent);
+}
+.from-pink-500 {
+  --tw-gradient-from: var(--ochi-accent);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(125, 95, 121, 0));
+}
+.to-pink-500 {
+  --tw-gradient-to: var(--ochi-accent);
+}
+.via-rose-300 {
+  --tw-gradient-stops: var(--tw-gradient-from), var(--ochi-accent), var(--tw-gradient-to, rgba(125, 95, 121, 0));
+}
+.via-pink-300 {
+  --tw-gradient-stops: var(--tw-gradient-from), var(--ochi-accent), var(--tw-gradient-to, rgba(125, 95, 121, 0));
+}
+
+/* Global styles for Ochilive frontend */
+html, body, #root {
+  margin: 0;
+  min-height: 100%;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at top, rgba(125,95,121,0.12), transparent 20%),
+    linear-gradient(180deg, #05060f 0%, #060712 100%);
+  color: var(--ochi-text);
+}
+
+body {
+  line-height: 1.5;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(125,95,121,0.28);
+  color: white;
+}
+
+.page-transition {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: page-fade-in 0.45s ease-out forwards;
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-card,
+.page-section {
+  transition: transform 180ms ease, background-color 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.page-card:hover,
+.page-section:hover {
+  transform: translateY(-2px);
+}
+
+.page-card:active,
+.page-section:active {
+  transform: translateY(0);
+}
+
+.page-card {
+  will-change: transform, box-shadow;
+}
+
+.page-section {
+  will-change: transform, box-shadow;
+}
+
+.page-exit {
+  animation: page-fade-out 180ms ease-in forwards;
+}
+
+@keyframes page-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* Helpers */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+  -webkit-overflow-scrolling: touch;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+

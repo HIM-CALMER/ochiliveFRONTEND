@@ -1,0 +1,94 @@
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
+const api = axios.create({
+  baseURL: `${API_BASE_URL}/dashboard`,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+const videoApi = axios.create({
+  baseURL: `${API_BASE_URL}/videos`,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+const authInterceptor = (config) => {
+  const token = sessionStorage.getItem('ochi_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+};
+
+api.interceptors.request.use(authInterceptor);
+videoApi.interceptors.request.use(authInterceptor);
+
+export const getDashboardSummary = async () => {
+  const { data } = await api.get('/summary');
+  return data;
+};
+
+export const getVideoFeed = async () => {
+  const { data } = await videoApi.get('/');
+  return data;
+};
+
+export const incrementView = async (id) => {
+  const { data } = await videoApi.post(`/${id}/view`);
+  return data;
+};
+
+export const likeVideo = async (id) => {
+  const { data } = await videoApi.post(`/${id}/like`);
+  return data;
+};
+
+export const commentOnVideo = async (id, comment) => {
+  const { data } = await videoApi.post(`/${id}/comments`, { comment });
+  return data;
+};
+
+export const toggleSaveVideo = async (id) => {
+  const { data } = await videoApi.post(`/${id}/save`);
+  return data;
+};
+
+export const getSavedVideos = async () => {
+  const { data } = await videoApi.get('/saved');
+  return data;
+};
+
+export const uploadVideoPost = async (payload) => {
+  const { data } = await videoApi.post('/upload', payload);
+  return data;
+};
+
+export const getDiscoverItems = async () => {
+  const { data } = await api.get('/discover');
+  return data;
+};
+
+export const getWalletSummary = async () => {
+  const { data } = await api.get('/wallet');
+  return data;
+};
+
+export const getProfileSummary = async () => {
+  const { data } = await api.get('/profile');
+  return data;
+};
+
+export const getNotifications = async () => {
+  const { data } = await api.get('/notifications');
+  return data;
+};
+
+export const getActivityFeed = async () => {
+  const { data } = await api.get('/activity');
+  return data;
+};
+
+export const uploadAsset = async (payload) => {
+  const { data } = await api.post('/upload', payload);
+  return data;
+};
