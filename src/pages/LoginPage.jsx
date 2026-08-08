@@ -6,6 +6,20 @@ import Footer from '../components/Footer';
 import BrandedLoader from '../components/BrandedLoader';
 import screenLogo from '../assets/animations/screen.png';
 
+const AuthSparkIcon = ({ className = 'text-rose-300' }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M12 2v4" />
+    <path d="M12 18v4" />
+    <path d="M4.93 4.93l2.83 2.83" />
+    <path d="M16.24 16.24l2.83 2.83" />
+    <path d="M2 12h4" />
+    <path d="M18 12h4" />
+    <path d="M4.93 19.07l2.83-2.83" />
+    <path d="M16.24 7.76l2.83-2.83" />
+    <circle cx="12" cy="12" r="4" strokeWidth="2.2" fill="currentColor" fillOpacity="0.06" />
+  </svg>
+);
+
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
 const buildApiUrl = (path) => {
@@ -76,12 +90,12 @@ function LoginPage() {
       <Navbar />
       <BrandedLoader isVisible={transitioning} label="Opening your dashboard..." />
 
-      <main className="relative mx-auto flex min-h-[calc(100vh-5rem)] max-w-7xl items-center px-2 py-3 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
-        <div className="grid w-full gap-3 sm:gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
-          <section className="order-1 rounded-[28px] border border-white/10 bg-slate-950/95 p-4 shadow-[0_32px_120px_-32px_rgba(2,6,23,0.95)] backdrop-blur-2xl transition duration-500 hover:shadow-[0_36px_130px_-24px_rgba(244,63,94,0.28)] sm:order-2 sm:rounded-[32px] sm:p-7 lg:p-10">
-            <div className="mb-5 flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.04] px-3 py-3">
+      <main className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl items-center px-2.5 py-2.5 sm:px-6 sm:py-5 lg:px-8 lg:py-8">
+        <div className="grid w-full gap-3 sm:gap-5 lg:grid-cols-[1.02fr_0.98fr] lg:gap-8">
+          <section className="order-1 rounded-[30px] border-[2.5px] border-white/10 bg-slate-950/90 p-4 shadow-[0_24px_90px_-34px_rgba(2,6,23,0.95)] backdrop-blur-2xl sm:order-2 sm:rounded-[34px] sm:p-7 lg:p-10">
+            <div className="mb-3 flex items-center justify-between rounded-2xl border-[2.5px] border-white/10 bg-white/[0.04] px-3 py-2 sm:px-4 sm:py-2.5">
               <div className="flex items-center gap-3">
-                <img src={screenLogo} alt="Ochi Live logo" className="h-10 w-10 rounded-lg object-cover shadow-lg shadow-rose-500/20 sm:h-12 sm:w-12" />
+                <img src={screenLogo} alt="Ochi Live logo" className="h-10 w-10 rounded-xl object-cover shadow-lg shadow-rose-500/20 sm:h-12 sm:w-12" />
                 <div>
                   <p className="text-base font-semibold text-white">Ochi Live</p>
                   <p className="text-sm text-slate-400">Live comedy, reimagined</p>
@@ -92,34 +106,26 @@ function LoginPage() {
               </div>
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-rose-300 sm:text-[11px]">
-              <span className="h-2 w-2 rounded-full bg-rose-400" />
-              Backstage access
-            </div>
-
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400 sm:text-sm">Access account</p>
-                <h2 className="mt-1 text-xl font-semibold text-white sm:text-2xl">Welcome back</h2>
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3 text-slate-400">
+                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-rose-500/10 text-rose-300 shadow-sm shadow-rose-500/10">
+                  <AuthSparkIcon className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400 sm:text-sm">Access account</p>
+                  <h2 className="mt-1 text-lg font-semibold text-white sm:text-xl">Welcome back</h2>
+                </div>
               </div>
               <Link to="/signup" className="text-sm font-medium text-rose-300 transition hover:text-rose-200">
                 Create account
               </Link>
             </div>
 
-            <p className="mt-3 text-sm leading-6 text-slate-400">
-              Sign in to continue your live experience with a secure, polished workspace designed for creators and audiences alike.
+            <p className="mt-2 text-sm leading-5 text-slate-400">
+              Quick access to your live dashboard.
             </p>
 
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {['Fast sign-in', 'Personalized rooms'].map((item) => (
-                <div key={item} className="rounded-lg border border-slate-800/80 bg-slate-950/70 px-3 py-2.5 text-sm text-slate-300">
-                  {item}
-                </div>
-              ))}
-            </div>
-
-            <form onSubmit={handleSubmit} className="mt-5 space-y-3 sm:mt-8 sm:space-y-4">
+            <form onSubmit={handleSubmit} className="mt-3 space-y-2.5 sm:mt-5 sm:space-y-3">
               <label className="block text-sm font-medium text-slate-300">
                 Email address
                 <input
@@ -184,19 +190,22 @@ function LoginPage() {
                 disabled={loading}
                 className="mt-2 w-full rounded-full bg-[var(--ochi-accent)] px-5 py-3 text-sm font-semibold text-[var(--ochi-bg)] shadow-[0_12px_35px_-12px_rgba(244,63,94,0.6)] transition duration-300 hover:-translate-y-0.5 hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-70 sm:py-3.5"
               >
+                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-rose-300">
+                  <AuthSparkIcon className="h-4 w-4" />
+                </span>
                 {loading ? 'Signing in...' : 'Continue securely'}
               </button>
             </form>
 
-            <div className="mt-4 flex items-center gap-3 text-sm text-slate-500 sm:mt-6">
+            <div className="mt-3 flex items-center gap-3 text-sm text-slate-500 sm:mt-5">
               <div className="h-px flex-1 bg-slate-950" />
               Or continue with
               <div className="h-px flex-1 bg-slate-950" />
             </div>
 
-            <button className="mt-3 flex w-full items-center justify-center gap-3 rounded-full border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm font-medium text-slate-200 transition duration-300 hover:-translate-y-0.5 hover:border-rose-400 hover:bg-slate-950/80 hover:text-white sm:mt-5">
+            <button className="mt-3 flex w-full items-center justify-center gap-3 rounded-full border-[2.5px] border-slate-700 bg-slate-950/70 px-4 py-3 text-sm font-medium text-slate-200 transition duration-300 hover:-translate-y-0.5 hover:border-rose-400 hover:bg-slate-950/80 hover:text-white sm:mt-5">
               <span className="text-base">G</span>
-              Continue with Google
+              Google sign-in
             </button>
 
             <p className="mt-4 text-sm text-slate-400 sm:mt-6">
@@ -207,36 +216,24 @@ function LoginPage() {
             </p>
           </section>
 
-          <section className="order-2 rounded-[28px] border border-white/10 bg-slate-950/60 p-4 shadow-[0_28px_100px_-30px_rgba(244,63,94,0.35)] backdrop-blur-2xl transition duration-500 hover:shadow-[0_32px_110px_-24px_rgba(244,63,94,0.24)] sm:order-1 sm:rounded-[32px] sm:p-7 lg:p-10">
-            <span className="inline-flex items-center gap-2 rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-rose-300 sm:text-[11px]">
-              <span className="h-2 w-2 rounded-full bg-rose-400" />
-              Premium experience
-            </span>
+          <section className="order-2 rounded-[28px] border-[2.5px] border-white/10 bg-slate-950/60 p-4 shadow-[0_28px_100px_-30px_rgba(244,63,94,0.35)] backdrop-blur-2xl transition duration-500 hover:shadow-[0_32px_110px_-24px_rgba(244,63,94,0.24)] sm:order-1 sm:rounded-[32px] sm:p-7 lg:p-10">
+            <div className="flex items-center gap-3 text-slate-400">
+              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-rose-500/10 text-rose-300 shadow-sm shadow-rose-500/10">
+                <AuthSparkIcon className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.28em] text-rose-300 sm:text-[11px]">
+                  Smooth sign-in
+                </p>
+                <p className="mt-1 text-sm text-slate-400">Fast access to your live tools.</p>
+              </div>
+            </div>
             <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white sm:mt-6 sm:text-4xl lg:text-5xl">
               Welcome back to the stage.
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 sm:mt-4 sm:text-base sm:leading-7 lg:text-lg lg:leading-8">
-              Step back into a refined space for live comedy, creator rooms, and memorable conversations.
+              Refined sign-in for creators and fans.
             </p>
-
-            <p className="mt-4 text-sm text-slate-300 sm:hidden">
-              Jump back into live shows and creator rooms in seconds.
-            </p>
-
-            <div className="mt-4 hidden space-y-3 sm:mt-8 sm:block sm:space-y-4">
-              {[
-                'Secure sign-in with encrypted sessions',
-                'Jump straight into live shows and creator rooms',
-                'Personalized recommendations tailored to your taste',
-              ].map((item) => (
-                <div key={item} className="flex items-start gap-3 rounded-lg border border-slate-800/70 bg-slate-950/65 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-4">
-                  <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-rose-300">
-                    âœ¦
-                  </div>
-                  <p className="text-sm leading-6 text-slate-300 sm:text-[15px] sm:leading-7">{item}</p>
-                </div>
-              ))}
-            </div>
           </section>
         </div>
       </main>
