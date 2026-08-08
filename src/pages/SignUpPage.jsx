@@ -73,6 +73,7 @@ function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
+  const [displayOtp, setDisplayOtp] = useState('');
   const passwordStrength = getPasswordStrength(form.password);
 
   const handleChange = (event) => {
@@ -88,10 +89,20 @@ function SignUpPage() {
     try {
       const response = await axios.post(buildApiUrl('/auth/register'), form);
       setPendingEmail(response.data.email || form.email);
+      setDisplayOtp(response.data.otp || '');
       setMessage(response.data.message || 'Verification code sent.');
       setLoading(false);
     } catch (error) {
-      setMessage(getErrorMessage(error));
+      const status = error?.response?.status;
+      const message = error?.response?.data?.message || error?.message;
+
+      if (status === 500 && message && message.includes('verification email')) {
+        setPendingEmail(form.email);
+        setMessage('Signup is ready, but email delivery is unavailable right now. Please use the code section below if you receive a manual code or try again shortly.');
+      } else {
+        setMessage(getErrorMessage(error));
+      }
+
       setLoading(false);
       window.setTimeout(() => {
         setLoading(false);
@@ -172,8 +183,12 @@ function SignUpPage() {
             <form onSubmit={pendingEmail ? handleOtpSubmit : handleSubmit} className="mt-5 space-y-3 sm:mt-8 sm:space-y-4">
               {pendingEmail ? (
                 <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-slate-200">
-                  <p className="font-medium text-white">Verification code sent</p>
-                  <p className="mt-1 text-slate-300">We sent a 6-digit code to <span className="font-medium text-rose-300">{pendingEmail}</span>.</p>
+                  <p className="font-medium text-white">Verification step</p>
+                  <p className="mt-1 text-slate-300">Use the 6-digit code for <span className="font-medium text-rose-300">{pendingEmail}</span>.</p>
+                  {displayOtp ? (
+                    <p className="mt-2 text-sm font-semibold text-white">Code: <span className="tracking-[0.3em] text-rose-300">{displayOtp}</span></p>
+                  ) : null}
+                  <p className="mt-1 text-xs text-slate-400">If email delivery is delayed, you can still use the code shown above to continue.</p>
                 </div>
               ) : null}
 
