@@ -6,7 +6,12 @@ import Footer from '../components/Footer';
 import BrandedLoader from '../components/BrandedLoader';
 import screenLogo from '../assets/animations/screen.png';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
+
+const buildApiUrl = (path) => {
+  const base = API_BASE_URL;
+  return `${base}${base.endsWith('/api') ? '' : '/api'}${path}`;
+};
 
 const getErrorMessage = (error) => {
   const status = error?.response?.status;
@@ -81,7 +86,7 @@ function SignUpPage() {
     setMessage('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/register`, form);
+      const response = await axios.post(buildApiUrl('/auth/register'), form);
       setPendingEmail(response.data.email || form.email);
       setMessage(response.data.message || 'Verification code sent.');
       setLoading(false);
@@ -100,7 +105,7 @@ function SignUpPage() {
     setMessage('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/verify`, { email: pendingEmail, otp: otpCode });
+      const response = await axios.post(buildApiUrl('/auth/verify'), { email: pendingEmail, otp: otpCode });
       persistSession(response.data.token, response.data.user);
       setMessage(response.data.message);
       setTransitioning(true);
