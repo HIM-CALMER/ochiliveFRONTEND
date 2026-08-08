@@ -134,30 +134,49 @@ export default function DashboardShell({ title, subtitle, children }) {
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-slate-950/98 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-1 px-3 py-1.5 sm:px-6">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `group flex-1 min-w-0 flex-col items-center gap-1 px-1 py-1.5 sm:flex-row sm:px-3 sm:py-2 ${
-                  isActive ? 'text-white' : 'text-slate-400'
-                }`
-              }
-            >
-              {item.icon === 'upload' ? (
-                <span className="relative inline-flex items-center justify-center">
-                  <span className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 opacity-40 blur-sm animate-[pulse_1000ms_infinite]" />
-                  <span className="relative inline-flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 text-white shadow-[0_24px_70px_-32px_rgba(245,158,11,0.45)] transform transition group-hover:scale-105 ring-3 ring-amber-500/30">
-                    <Icon name={item.icon} className="h-5 w-5" />
-                  </span>
-                </span>
-              ) : (
-                <Icon name={item.icon} className="h-5 w-5" />
-              )}
-              <span className="hidden sm:inline-block text-sm">{item.label}</span>
-            </NavLink>
-          ))}
+        <div className="mx-auto flex max-w-6xl items-center justify-center gap-6 px-3 py-1.5 sm:px-6">
+          {navItems.map((item) => {
+            const colorMap = {
+              home: 'text-amber-400',
+              search: 'text-rose-300',
+              upload: 'text-amber-400',
+              wallet: 'text-emerald-300',
+              user: 'text-sky-300',
+              activity: 'text-slate-400',
+            };
+
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `group flex-none flex-col items-center justify-center gap-1 px-1 py-1.5 sm:flex-row sm:px-3 sm:py-2 ${
+                    isActive ? 'text-white' : 'text-slate-400'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {item.icon === 'upload' ? (
+                      <span className="relative inline-flex items-center justify-center">
+                        <span className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 opacity-40 blur-sm animate-[pulse_1000ms_infinite]" />
+                        <span className="relative inline-flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 text-white shadow-[0_24px_70px_-32px_rgba(245,158,11,0.45)] transform transition group-hover:scale-105 ring-3 ring-amber-500/30">
+                          <span className={`inline-flex h-5 w-5 items-center justify-center ${isActive ? 'text-white' : colorMap[item.icon]}`}>
+                            <Icon name={item.icon} className="h-5 w-5" />
+                          </span>
+                        </span>
+                      </span>
+                    ) : (
+                      <span className={`inline-flex h-6 w-6 items-center justify-center ${isActive ? 'text-white' : colorMap[item.icon]}`}>
+                        <Icon name={item.icon} className="h-5 w-5" />
+                      </span>
+                    )}
+                    <span className="hidden sm:inline-block text-sm">{item.label}</span>
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </div>
       </nav>
     </div>
