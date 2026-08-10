@@ -5,9 +5,15 @@ const toneStyles = {
   rose: 'from-[#9c6c78] via-[#513f5c] to-[#101322]',
 };
 
-function ContentGrid({ items, tab }) {
+function ContentGrid({ items, tab, isOwnProfile }) {
   if (!items.length) {
-    return <div className="py-16 text-center text-sm text-slate-500">Nothing here yet.</div>;
+    return (
+      <div className="border-t border-slate-800 py-14 text-center">
+        <p className="text-sm font-medium text-slate-300">{tab === 'reshared' ? 'No reshared posts yet.' : 'No posts yet.'}</p>
+        <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-slate-500">{isOwnProfile ? 'Publish your first live moment and start building your profile.' : 'This creator has not published anything here yet.'}</p>
+        {isOwnProfile && tab === 'posts' ? <a href="/upload" className="mt-5 inline-flex border border-ochi-accent bg-ochi-accent px-4 py-2 text-sm font-semibold text-white">Create post</a> : null}
+      </div>
+    );
   }
 
   return (

@@ -125,6 +125,21 @@ export const updateProfilePicture = async (file) => {
   return data;
 };
 
+export const completeComedyOnboarding = async (answers) => {
+  const { data } = await api.post('/../profile/me/comedy-onboarding', answers);
+  return data;
+};
+
+export const createLiveRoom = async (payload) => {
+  const { data } = await videoApi.post('/live/rooms', payload);
+  return data;
+};
+
+export const startLiveRoom = async (id) => {
+  const { data } = await videoApi.post(`/live/rooms/${id}/start`);
+  return data;
+};
+
 export const getNotifications = async () => {
   const { data } = await api.get('/notifications');
   return data;

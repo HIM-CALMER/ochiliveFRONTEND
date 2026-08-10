@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardShell from '../components/DashboardShell';
-import { uploadVideoPost } from '../api/dashboardApi';
+import { createLiveRoom, getProfileSummary, startLiveRoom, uploadVideoPost } from '../api/dashboardApi';
 
 /* ---------------------------------------------------------------
    Iconography — thin, consistent 24px line system
@@ -167,6 +167,8 @@ function UploadPage() {
   const [activeTab, setActiveTab] = useState('video');
   const [screen, setScreen] = useState('camera');
   const [stream, setStream] = useState(null);
+  const [cameraFacing, setCameraFacing] = useState('user');
+  const [cameraLoading, setCameraLoading] = useState(false);
   const [recording, setRecording] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewType, setPreviewType] = useState('video');
@@ -180,6 +182,17 @@ function UploadPage() {
   const [allowComments, setAllowComments] = useState(true);
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [comedian, setComedian] = useState(false);
+  const [liveStarting, setLiveStarting] = useState(false);
+  const [liveRoomId, setLiveRoomId] = useState('');
+  const [liveTitle, setLiveTitle] = useState('');
+  const [liveDescription, setLiveDescription] = useState('');
+  const [liveFormat, setLiveFormat] = useState('standup');
+  const [liveVisibility, setLiveVisibility] = useState('public');
+
+  useEffect(() => {
+    getProfileSummary().then((profile) => setComedian(profile.user?.accountType === 'comedian')).catch(() => setComedian(false));
+  }, []);
 
   useEffect(() => {
     if (!stream || !videoRef.current) return;
@@ -220,22 +233,33 @@ function UploadPage() {
     setStream(null);
   };
 
-  const openCamera = async (mode) => {
+  const openCamera = async (mode, facing = cameraFacing) => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setStatus('Camera unavailable.');
       return;
     }
 
+    setCameraLoading(true);
     try {
       const cameraStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
+        video: { facingMode: { ideal: facing } },
         audio: mode === 'video',
       });
       setStream(cameraStream);
-      setStatus('Camera ready.');
+      setStatus(facing === 'user' ? 'Front camera ready.' : 'Back camera ready.');
     } catch (error) {
       setStatus('Allow camera access to capture content.');
+    } finally {
+      setCameraLoading(false);
     }
+  };
+
+  const switchCamera = async () => {
+    if (recording || cameraLoading) return;
+    const nextFacing = cameraFacing === 'user' ? 'environment' : 'user';
+    stopCamera();
+    setCameraFacing(nextFacing);
+    await openCamera(activeTab, nextFacing);
   };
 
   const handleOption = (key) => {
@@ -246,6 +270,11 @@ function UploadPage() {
       return;
     }
     if (key === 'live') {
+      if (!comedian) {
+        setStatus('Complete Try Comedy on your profile before going live.');
+        navigate('/profile');
+        return;
+      }
       setScreen('live');
       setStatus('Live ready.');
       stopCamera();
@@ -253,6 +282,36 @@ function UploadPage() {
     }
     setScreen('camera');
     setStatus('Ready to capture.');
+  };
+
+  const prepareLiveRoom = async () => {
+    if (!liveTitle.trim()) {
+      setStatus('Add a room title before going live.');
+      return;
+    }
+    setLiveStarting(true);
+    try {
+      const result = await createLiveRoom({ title: liveTitle, description: liveDescription, format: liveFormat, visibility: liveVisibility });
+      setLiveRoomId(result.room.id);
+      setStatus('Room ready. Check your setup, then start live.');
+    } catch (error) {
+      setStatus(error?.response?.data?.message || 'Unable to prepare the live room.');
+    } finally {
+      setLiveStarting(false);
+    }
+  };
+
+  const startPreparedLive = async () => {
+    if (!liveRoomId) return prepareLiveRoom();
+    setLiveStarting(true);
+    try {
+      await startLiveRoom(liveRoomId);
+      setStatus('Live room started. Your audience can join now.');
+    } catch (error) {
+      setStatus(error?.response?.data?.message || 'Unable to start the live room.');
+    } finally {
+      setLiveStarting(false);
+    }
   };
 
   const takePhoto = () => {
@@ -402,7 +461,7 @@ function UploadPage() {
   const canPost = Boolean(previewUrl) && !uploading;
 
   return (
-    <DashboardShell title="Upload" subtitle="Create content in a TikTok-style flow.">
+    <DashboardShell title={comedian ? 'Comedian Studio' : 'Create'} subtitle={comedian ? 'Prepare your next performance on Ochi Live.' : 'Create posts now. Complete Try Comedy to unlock live rooms.'}>
       <style>{`
         @keyframes up-fade-in { from { opacity: 0; transform: translateY(10px) scale(.995); } to { opacity: 1; transform: none; } }
         @keyframes up-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -452,8 +511,8 @@ function UploadPage() {
           </button>
 
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.34em] text-slate-500">Studio</p>
-            <h1 className="truncate text-sm font-semibold tracking-tight text-white">Create a post</h1>
+            <p className="text-[10px] font-medium uppercase tracking-[0.34em] text-slate-500">{comedian ? 'Comedian Studio' : 'Creator Studio'}</p>
+            <h1 className="truncate text-sm font-semibold tracking-tight text-white">{screen === 'live' ? 'Prepare a live room' : 'Create a post'}</h1>
           </div>
 
           {/* step indicator — Capture → Details → Publish */}
@@ -508,6 +567,8 @@ function UploadPage() {
           </button>
         </header>
 
+        {!comedian ? <div className="relative z-10 mx-4 mt-3 border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100 sm:mx-6"><span className="font-semibold">Live access is locked.</span> Complete Try Comedy on your profile to perform live. <button type="button" onClick={() => navigate('/profile')} className="ml-1 font-semibold underline">Open profile</button></div> : null}
+
         {/* upload progress rail */}
         <div className="relative z-10 h-0.5 w-full shrink-0 bg-white/5">
           <div
@@ -520,7 +581,7 @@ function UploadPage() {
         <main className="relative z-10 flex min-h-0 flex-1 flex-col lg:mx-auto lg:w-full lg:max-w-[1200px] lg:flex-row lg:gap-6 lg:p-6">
           {/* left rail — desktop mode switcher (TikTok/Twitch style) */}
           <aside className="hidden shrink-0 flex-col gap-2 lg:flex" aria-label="Upload mode">
-            {options.map((option) => {
+            {options.filter((option) => comedian || option.key !== 'live').map((option) => {
               const active = activeTab === option.key;
               const { Glyph } = option;
               return (
@@ -558,12 +619,12 @@ function UploadPage() {
             }}
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
-            className={`relative min-h-0 flex-1 overflow-hidden bg-black transition-all duration-300 lg:rounded-[28px] lg:border lg:shadow-2xl lg:shadow-black/40 ${
+            className={`relative min-h-0 flex-1 overflow-hidden bg-black transition-all duration-300 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink lg:rounded-[28px] lg:border lg:shadow-2xl lg:shadow-black/40 ${
               dragging ? 'lg:border-rose-400/60 lg:ring-2 lg:ring-rose-400/30' : 'lg:border-white/10'
             }`}
           >
             {screen === 'camera' && (
-              <video key="cam" ref={videoRef} className="up-stage-in h-full w-full object-cover" muted playsInline autoPlay />
+              <video key="cam" ref={videoRef} className={`up-stage-in h-full w-full object-cover ${cameraFacing === 'user' ? '-scale-x-100' : ''}`} muted playsInline autoPlay />
             )}
 
             {screen === 'preview' &&
@@ -646,18 +707,29 @@ function UploadPage() {
                 </span>
               )}
             </div>
+            {screen === 'camera' ? (
+              <button
+                type="button"
+                onClick={switchCamera}
+                disabled={recording || cameraLoading}
+                aria-label={`Switch to ${cameraFacing === 'user' ? 'back' : 'front'} camera`}
+                className="absolute right-4 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur transition hover:bg-black/70 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="text-lg" aria-hidden="true">↻</span>
+              </button>
+            ) : null}
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent lg:hidden" />
           </section>
 
           {/* Controls / details */}
-          <section className="up-scroll shrink-0 border-t border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur-xl sm:px-6 lg:w-[380px] lg:overflow-y-auto lg:rounded-[28px] lg:border lg:px-5 lg:py-5">
+          <section className="up-scroll absolute inset-x-0 bottom-0 z-20 max-h-[34dvh] min-h-0 overflow-y-auto rounded-t-2xl border-t border-white/15 bg-slate-950/90 px-3 pb-[calc(.65rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-14px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:px-6 lg:relative lg:inset-auto lg:max-h-none lg:w-[380px] lg:flex-none lg:rounded-[28px] lg:border lg:px-5 lg:py-5 lg:shadow-none">
             {/* mobile mode switcher */}
             <div
               role="tablist"
               aria-label="Upload mode"
-              className="grid grid-cols-4 gap-1.5 rounded-2xl border border-white/10 bg-white/5 p-1.5 lg:hidden"
+              className={`grid gap-0.5 rounded-xl border border-white/10 bg-white/5 p-0.5 lg:hidden ${comedian ? 'grid-cols-4' : 'grid-cols-3'}`}
             >
-              {options.map((option) => {
+              {options.filter((option) => comedian || option.key !== 'live').map((option) => {
                 const active = activeTab === option.key;
                 const { Glyph } = option;
                 return (
@@ -667,12 +739,12 @@ function UploadPage() {
                     aria-selected={active}
                     type="button"
                     onClick={() => handleOption(option.key)}
-                    className={`group flex flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 ${
+                    className={`group flex flex-row items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 sm:flex-col sm:gap-1.5 sm:py-2.5 ${
                       active ? 'bg-white/10 text-white shadow-lg shadow-black/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                     }`}
                   >
-                    <Glyph className={`h-5 w-5 transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-105'}`} />
-                    <span className="text-[11px] font-semibold tracking-tight">{option.label}</span>
+                    <Glyph className={`h-4 w-4 shrink-0 transition-transform duration-300 sm:h-5 sm:w-5 ${active ? 'scale-110' : 'group-hover:scale-105'}`} />
+                    <span className="text-[10px] font-semibold tracking-tight sm:text-[11px]">{option.label}</span>
                     <span className={`h-0.5 w-5 rounded-full transition-all duration-300 ${active ? 'bg-rose-500 opacity-100' : 'opacity-0'}`} />
                   </button>
                 );
@@ -805,10 +877,22 @@ function UploadPage() {
               ) : screen === 'live' ? (
                 <div key="p-live" className="up-rise space-y-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
                   <div>
-                    <p className="text-sm font-semibold text-white">Live setup</p>
+                    <p className="text-sm font-semibold text-white">Live room setup</p>
                     <p className="mt-1.5 text-sm leading-relaxed text-slate-400">
-                      Check your lighting and audio, then start streaming.
+                      Give your audience a reason to join before you start.
                     </p>
+                  </div>
+                  <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                    Room title
+                    <input value={liveTitle} onChange={(event) => { setLiveTitle(event.target.value); setLiveRoomId(''); }} maxLength={80} placeholder="Late-night crowd work" className="mt-2 w-full border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none placeholder:text-slate-600 focus:border-rose-400" />
+                  </label>
+                  <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                    Description
+                    <textarea value={liveDescription} onChange={(event) => setLiveDescription(event.target.value)} maxLength={280} rows={2} placeholder="Tell people what kind of room this is." className="mt-2 w-full resize-none border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none placeholder:text-slate-600 focus:border-rose-400" />
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Format<select value={liveFormat} onChange={(event) => setLiveFormat(event.target.value)} className="mt-2 w-full border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none"><option value="standup">Stand-up</option><option value="sketch">Sketch</option><option value="storytelling">Storytelling</option><option value="crowd-work">Crowd work</option><option value="open-mic">Open mic</option></select></label>
+                    <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Audience<select value={liveVisibility} onChange={(event) => setLiveVisibility(event.target.value)} className="mt-2 w-full border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none"><option value="public">Everyone</option><option value="followers">Followers</option><option value="private">Only me</option></select></label>
                   </div>
                   <ul className="space-y-2">
                     {['Camera', 'Microphone', 'Network'].map((item, i) => (
@@ -826,11 +910,12 @@ function UploadPage() {
                   </ul>
                   <button
                     type="button"
-                    onClick={() => setStatus('Live streaming not available in this demo.')}
+                    disabled={liveStarting}
+                    onClick={startPreparedLive}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
                   >
                     <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
-                    Start Live
+                    {liveStarting ? (liveRoomId ? 'Starting room...' : 'Preparing room...') : liveRoomId ? 'Start live room' : 'Prepare live room'}
                   </button>
                 </div>
               ) : screen === 'gallery' ? (
@@ -857,7 +942,7 @@ function UploadPage() {
                   </ul>
                 </div>
               ) : (
-                <div key="p-camera" className="up-rise rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+                <div key="p-camera" className="up-rise rounded-xl border border-white/10 bg-slate-900/70 p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-white">
@@ -877,12 +962,12 @@ function UploadPage() {
                     </span>
                   </div>
 
-                  <div className="mt-5 flex items-center justify-center gap-6">
+                  <div className="mt-3 flex items-center justify-center gap-4">
                     <button
                       type="button"
                       onClick={() => handleOption('gallery')}
                       aria-label="Open gallery"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                     >
                       <GalleryIcon className="h-5 w-5" />
                     </button>
@@ -891,13 +976,13 @@ function UploadPage() {
                       type="button"
                       aria-label={activeTab === 'photo' ? 'Take photo' : recording ? 'Stop recording' : 'Start recording'}
                       onClick={activeTab === 'photo' ? takePhoto : recording ? stopRecording : startRecording}
-                      className="group relative inline-flex h-[78px] w-[78px] items-center justify-center rounded-full border border-white/20 bg-white/5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
+                      className="group relative inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
                     >
                       {recording && <span className="up-ring absolute inset-0 rounded-full border-2 border-rose-500/60" />}
-                      <span className="absolute inset-1.5 rounded-full bg-white shadow-2xl shadow-black/40 transition-transform duration-300 group-hover:scale-[1.04] group-active:scale-95" />
+                      <span className="absolute inset-1 rounded-full bg-white shadow-2xl shadow-black/40 transition-transform duration-300 group-hover:scale-[1.04] group-active:scale-95" />
                       <span
                         className={`relative transition-all duration-300 ${
-                          recording ? 'h-5 w-5 rounded-[6px] bg-slate-950' : 'h-5 w-5 rounded-full bg-rose-500'
+                          recording ? 'h-4 w-4 rounded-[5px] bg-slate-950' : 'h-4 w-4 rounded-full bg-rose-500'
                         }`}
                       />
                     </button>
@@ -906,7 +991,7 @@ function UploadPage() {
                       type="button"
                       onClick={() => handleOption(activeTab === 'photo' ? 'video' : 'photo')}
                       aria-label="Switch capture mode"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                     >
                       <RetakeIcon className="h-5 w-5" />
                     </button>

@@ -4,6 +4,7 @@ function TabsSection({ activeTab, onChange }) {
       {[
         { id: 'posts', label: 'Posts' },
         { id: 'reshared', label: 'Reshared' },
+        { id: 'about', label: 'About' },
       ].map((tab) => (
         <button
           key={tab.id}

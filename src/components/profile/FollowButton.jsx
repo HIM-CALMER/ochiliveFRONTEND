@@ -1,12 +1,13 @@
 import { followProfile, unfollowProfile } from '../../api/dashboardApi';
 import { useState } from 'react';
 
-function FollowButton({ username, relationship, onChange }) {
+function FollowButton({ username, relationship, onChange, onTryComedy }) {
   const [following, setFollowing] = useState(Boolean(relationship?.isFollowing));
   const [loading, setLoading] = useState(false);
 
   if (relationship?.isOwnProfile) {
-    return <button type="button" className="border border-ochi-accent bg-ochi-accent px-7 py-2.5 text-sm font-semibold text-white">Try Comedy</button>;
+    if (relationship?.accountType === 'comedian') return <span className="border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm font-semibold text-emerald-300">Comedian profile</span>;
+    return <button type="button" onClick={onTryComedy} className="border border-ochi-accent bg-ochi-accent px-7 py-2.5 text-sm font-semibold text-white">Try Comedy</button>;
   }
 
   const toggle = async () => {
