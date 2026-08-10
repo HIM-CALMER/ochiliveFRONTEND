@@ -19,9 +19,17 @@ const videoApi = axios.create({
 
 const authInterceptor = (config) => {
   const token = sessionStorage.getItem('ochi_token');
+  let user = null;
+  try {
+    user = JSON.parse(sessionStorage.getItem('ochi_user') || 'null');
+  } catch {
+    sessionStorage.removeItem('ochi_user');
+  }
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  if (user?.id) config.headers['X-Ochi-User-ID'] = user.id;
+  if (user?.email) config.headers['X-Ochi-User-Email'] = user.email;
   return config;
 };
 
@@ -78,8 +86,42 @@ export const getWalletSummary = async () => {
   return data;
 };
 
-export const getProfileSummary = async () => {
-  const { data } = await api.get('/profile');
+export const getProfileSummary = async (username) => {
+  const user = JSON.parse(sessionStorage.getItem('ochi_user') || 'null');
+  const target = username || user?.username || user?.email?.split('@')[0] || 'creator';
+  const { data } = await api.get(`/../profiles/${target}`);
+  return data;
+};
+
+export const getProfilePosts = async (username) => {
+  const { data } = await api.get(`/../profiles/${username}/posts`);
+  return data;
+};
+
+export const getProfileReshares = async (username) => {
+  const { data } = await api.get(`/../profiles/${username}/reshares`);
+  return data;
+};
+
+export const followProfile = async (username) => {
+  const { data } = await api.post(`/../profiles/${username}/follow`);
+  return data;
+};
+
+export const unfollowProfile = async (username) => {
+  const { data } = await api.delete(`/../profiles/${username}/follow`);
+  return data;
+};
+
+export const updateProfile = async (payload) => {
+  const { data } = await api.patch('/../profile/me', payload);
+  return data;
+};
+
+export const updateProfilePicture = async (file) => {
+  const form = new FormData();
+  form.append('picture', file);
+  const { data } = await api.post('/../profile/me/picture', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   return data;
 };
 

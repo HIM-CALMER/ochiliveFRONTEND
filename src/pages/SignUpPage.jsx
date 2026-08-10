@@ -36,7 +36,7 @@ const getErrorMessage = (error) => {
   }
 
   if (status === 409) {
-    return 'An account with this email already exists.';
+    return 'That email or username is already in use.';
   }
 
   if (message && message !== 'Network Error') {
@@ -80,7 +80,7 @@ const getPasswordStrength = (password) => {
 
 function SignUpPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [form, setForm] = useState({ email: '', username: '', password: '' });
   const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -193,13 +193,14 @@ function SignUpPage() {
               {!pendingEmail ? (
                 <>
                   <label className="block text-sm font-medium text-slate-300">
-                    Full name
+                    Username
                     <input
-                      name="name"
+                      name="username"
                       type="text"
-                      value={form.name}
+                      value={form.username}
                       onChange={handleChange}
-                      placeholder="Ayo Thompson"
+                      placeholder="your_creator_name"
+                      pattern="[a-z0-9_]{3,24}"
                       className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950/80 px-4 py-3.5 text-sm text-white outline-none transition focus:border-rose-400 focus:ring-2 focus:ring-rose-500/20"
                       required
                     />

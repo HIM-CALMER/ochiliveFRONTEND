@@ -49,7 +49,7 @@ const persistSession = (token, user) => {
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ identity: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -127,13 +127,13 @@ function LoginPage() {
 
             <form onSubmit={handleSubmit} className="mt-3 space-y-2.5 sm:mt-5 sm:space-y-3">
               <label className="block text-sm font-medium text-slate-300">
-                Email address
+                Email or username
                 <input
-                  name="email"
-                  type="email"
-                  value={form.email}
+                  name="identity"
+                  type="text"
+                  value={form.identity}
                   onChange={handleChange}
-                  placeholder="you@example.com"
+                  placeholder="you@example.com or creator_name"
                   className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3.5 py-3 text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-rose-400 focus:bg-slate-950 focus:shadow-[0_0_0_3px_rgba(244,63,94,0.16)] focus:ring-2 focus:ring-rose-500/20 sm:px-4 sm:py-3.5"
                   required
                 />
@@ -194,7 +194,7 @@ function LoginPage() {
                   <AuthSparkIcon className="h-4 w-4" />
                 </span>
                 {loading ? 'Signing in...' : 'Continue securely'}
-              </button>
+              </button>           
             </form>
 
             <div className="mt-3 flex items-center gap-3 text-sm text-slate-500 sm:mt-5">

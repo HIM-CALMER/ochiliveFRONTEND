@@ -34,7 +34,8 @@ function AppRoutes() {
       <Route path="/wallet/revenue" element={<ProtectedRoute><WalletRevenue /></ProtectedRoute>} />
       <Route path="/wallet/transactions" element={<ProtectedRoute><WalletTransactions /></ProtectedRoute>} />
       <Route path="/wallet/withdrawals" element={<ProtectedRoute><WalletWithdrawals /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route path="/profile/:username" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/upload" element={<UploadPage />} />
       <Route path="/notifications" element={<NotificationsPage />} />
     </Routes>
