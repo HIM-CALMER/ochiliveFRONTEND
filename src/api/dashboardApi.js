@@ -1,19 +1,15 @@
 import axios from 'axios';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
-
-const buildApiUrl = (path) => {
-  const base = API_BASE_URL;
-  return `${base}${base.endsWith('/api') ? '' : '/api'}${path}`;
-};
+const API_ROOT = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
 
 const api = axios.create({
-  baseURL: buildApiUrl('/dashboard'),
+  baseURL: API_ROOT,
   headers: { 'Content-Type': 'application/json' },
 });
 
 const videoApi = axios.create({
-  baseURL: buildApiUrl('/videos'),
+  baseURL: API_ROOT,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -37,120 +33,137 @@ api.interceptors.request.use(authInterceptor);
 videoApi.interceptors.request.use(authInterceptor);
 
 export const getDashboardSummary = async () => {
-  const { data } = await api.get('/summary');
+  const { data } = await api.get('/dashboard/summary');
   return data;
 };
 
-export const getVideoFeed = async () => {
-  const { data } = await videoApi.get('/');
+export const getVideoFeed = async (mode = 'for_you') => {
+  const { data } = await videoApi.get('/videos/', { params: { mode } });
   return data;
 };
 
 export const incrementView = async (id) => {
-  const { data } = await videoApi.post(`/${id}/view`);
+  const { data } = await videoApi.post(`/videos/${id}/view`);
   return data;
 };
 
 export const likeVideo = async (id) => {
-  const { data } = await videoApi.post(`/${id}/like`);
+  const { data } = await videoApi.post(`/videos/${id}/like`);
+  return data;
+};
+
+export const reshareVideo = async (id) => {
+  const { data } = await videoApi.post(`/videos/${id}/reshare`);
   return data;
 };
 
 export const commentOnVideo = async (id, comment) => {
-  const { data } = await videoApi.post(`/${id}/comments`, { comment });
+  const { data } = await videoApi.post(`/videos/${id}/comments`, { comment });
   return data;
 };
 
 export const toggleSaveVideo = async (id) => {
-  const { data } = await videoApi.post(`/${id}/save`);
+  const { data } = await videoApi.post(`/videos/${id}/save`);
   return data;
 };
 
 export const getSavedVideos = async () => {
-  const { data } = await videoApi.get('/saved');
+  const { data } = await videoApi.get('/videos/saved');
   return data;
 };
 
 export const uploadVideoPost = async (payload) => {
-  const { data } = await videoApi.post('/upload', payload);
+  const { data } = await videoApi.post('/videos/upload', payload);
+  return data;
+};
+
+export const uploadVideoFile = async (form) => {
+  const { data } = await videoApi.post('/videos/upload-file', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   return data;
 };
 
 export const getDiscoverItems = async () => {
-  const { data } = await api.get('/discover');
+  const { data } = await api.get('/dashboard/discover');
   return data;
 };
 
 export const getWalletSummary = async () => {
-  const { data } = await api.get('/wallet');
+  const { data } = await api.get('/dashboard/wallet');
   return data;
 };
 
 export const getProfileSummary = async (username) => {
   const user = JSON.parse(sessionStorage.getItem('ochi_user') || 'null');
   const target = username || user?.username || user?.email?.split('@')[0] || 'creator';
-  const { data } = await api.get(`/../profiles/${target}`);
+  const { data } = await api.get(`/profiles/${encodeURIComponent(target)}`);
+  return data;
+};
+
+export const searchProfiles = async (query) => {
+  const cleaned = String(query || '').trim();
+  if (!cleaned) return { query: cleaned, results: [] };
+  const { data } = await api.get('/search/profiles', { params: { q: cleaned } });
   return data;
 };
 
 export const getProfilePosts = async (username) => {
-  const { data } = await api.get(`/../profiles/${username}/posts`);
+  const { data } = await api.get(`/profiles/${encodeURIComponent(username)}/posts`);
   return data;
 };
 
 export const getProfileReshares = async (username) => {
-  const { data } = await api.get(`/../profiles/${username}/reshares`);
+  const { data } = await api.get(`/profiles/${encodeURIComponent(username)}/reshares`);
   return data;
 };
 
 export const followProfile = async (username) => {
-  const { data } = await api.post(`/../profiles/${username}/follow`);
+  const { data } = await api.post(`/profiles/${encodeURIComponent(username)}/follow`);
   return data;
 };
 
 export const unfollowProfile = async (username) => {
-  const { data } = await api.delete(`/../profiles/${username}/follow`);
+  const { data } = await api.delete(`/profiles/${encodeURIComponent(username)}/follow`);
   return data;
 };
 
 export const updateProfile = async (payload) => {
-  const { data } = await api.patch('/../profile/me', payload);
+  const { data } = await api.patch('/profile/me', payload);
   return data;
 };
 
 export const updateProfilePicture = async (file) => {
   const form = new FormData();
   form.append('picture', file);
-  const { data } = await api.post('/../profile/me/picture', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  const { data } = await api.post('/profile/me/picture', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   return data;
 };
 
 export const completeComedyOnboarding = async (answers) => {
-  const { data } = await api.post('/../profile/me/comedy-onboarding', answers);
+  const { data } = await api.post('/profile/me/comedy-onboarding', answers);
   return data;
 };
 
 export const createLiveRoom = async (payload) => {
-  const { data } = await videoApi.post('/live/rooms', payload);
+  const { data } = await videoApi.post('/videos/live/rooms', payload);
   return data;
 };
 
 export const startLiveRoom = async (id) => {
-  const { data } = await videoApi.post(`/live/rooms/${id}/start`);
+  const { data } = await videoApi.post(`/videos/live/rooms/${id}/start`);
   return data;
 };
 
 export const getNotifications = async () => {
-  const { data } = await api.get('/notifications');
+  const { data } = await api.get('/dashboard/notifications');
   return data;
 };
 
 export const getActivityFeed = async () => {
-  const { data } = await api.get('/activity');
+  const { data } = await api.get('/dashboard/activity');
   return data;
 };
 
 export const uploadAsset = async (payload) => {
-  const { data } = await api.post('/upload', payload);
+  const { data } = await api.post('/dashboard/upload', payload);
   return data;
 };

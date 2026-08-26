@@ -16,6 +16,7 @@ import WalletWithdrawals from '../pages/wallet/WalletWithdrawals';
 import ProfilePage from '../pages/ProfilePage';
 import UploadPage from '../pages/UploadPage';
 import NotificationsPage from '../pages/NotificationsPage';
+import SettingsPage from '../pages/SettingsPage';
 import ProtectedRoute from './ProtectedRoute';
 
 function AppRoutes() {
@@ -38,6 +39,7 @@ function AppRoutes() {
       <Route path="/profile/:username" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/upload" element={<UploadPage />} />
       <Route path="/notifications" element={<NotificationsPage />} />
+      <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
     </Routes>
   );
 }

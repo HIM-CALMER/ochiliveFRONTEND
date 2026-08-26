@@ -68,73 +68,109 @@ function Icon({ name, className }) {
   }
 }
 
-export default function DashboardShell({ title, subtitle, children }) {
+export default function DashboardShell({
+  title,
+  subtitle,
+  children,
+  searchValue = '',
+  onSearchChange,
+  onSearchSubmit,
+  onSearchKeyDown,
+  searchPlaceholder = 'Search creators by name or username',
+}) {
   const location = useLocation();
   const isHome = location.pathname === '/' || location.pathname === '/home';
+  const isProfileRoute = location.pathname === '/profile' || location.pathname.startsWith('/profile/');
+  const isSettingsRoute = location.pathname === '/settings';
+  const isProfileToolbarRoute = isProfileRoute || isSettingsRoute;
+
+  const handleKeyDown = (event) => {
+    if (typeof onSearchKeyDown === 'function') {
+      onSearchKeyDown(event);
+      return;
+    }
+
+    if (event.key === 'Enter' && typeof onSearchSubmit === 'function') {
+      event.preventDefault();
+      onSearchSubmit(event);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="sticky top-0 z-20 bg-slate-950/98 backdrop-blur-xl relative">
+      <div className="fixed inset-x-0 top-0 z-40 bg-slate-950/95 backdrop-blur-xl">
         {isHome ? (
-          <div className="mx-auto max-w-6xl px-3 py-2 sm:px-6">
-            <div className="rounded-2xl bg-slate-900/80 border border-white/6 px-4 py-3 shadow-sm backdrop-blur-sm">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                {/* Left: logo + title */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-2xl bg-slate-950/90">
-                    <img src={screenLogo} alt="Ochi Live logo" className="h-full w-full object-cover" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500 truncate">Ochi Live</p>
-                    <h1 className="text-base sm:text-xl font-semibold text-white truncate">{title}</h1>
-                    {subtitle ? <p className="hidden sm:block mt-1 text-sm text-slate-400 truncate max-w-2xl">{subtitle}</p> : null}
-                  </div>
+          <div className="mx-auto max-w-6xl px-2 py-2 sm:px-6">
+            <div className="rounded-full bg-slate-900/70 px-2 py-1.5 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2">
+              <div className="flex items-center justify-between gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Link to="/notifications" className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-950/80 text-slate-200 transition hover:bg-slate-800 sm:h-9 sm:w-9" aria-label="Notifications">
+                    <Icon name="bell" className="h-4 w-4" />
+                  </Link>
                 </div>
 
-                {/* Right: search (desktop), upload CTA, activity, notifications */}
-                <div className="mt-2 sm:mt-0 flex items-center gap-3">
-                  <div className="hidden sm:flex items-center rounded-full bg-slate-950/80 border border-white/6 px-3 py-2 shadow-sm">
-                    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-slate-400" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2.2" /><path d="m16.65 16.65 3.7 3.7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
-                    <input type="search" placeholder="Search creators, categories" className="ml-3 w-60 bg-transparent text-sm text-slate-300 outline-none placeholder:text-slate-500" />
+                <div className="flex flex-1 justify-end">
+                  <div className="flex w-full max-w-[180px] items-center rounded-full bg-slate-950/80 px-2.5 py-1.5 shadow-sm sm:max-w-[280px] sm:px-3 sm:py-2">
+                    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-slate-400" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2.2" /><path d="m16.65 16.65 3.7 3.7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
+                    <input type="search" placeholder="Search" className="ml-2 w-full bg-transparent text-xs text-slate-300 outline-none placeholder:text-slate-500 sm:text-sm" />
                   </div>
-
-                  <Link to="/activity" className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-amber-300 hover:bg-slate-800 transition" aria-label="Activity">
-                    <Icon name="activity" className="h-5 w-5" />
-                  </Link>
-
-                  <Link to="/notifications" className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-slate-200 hover:bg-slate-800 transition" aria-label="Notifications">
-                    <Icon name="bell" className="h-5 w-5" />
-                  </Link>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2 sm:px-6">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 overflow-hidden rounded-2xl bg-slate-950/90">
-                <img src={screenLogo} alt="Ochi Live logo" className="h-full w-full object-cover" />
-              </div>
-              <div>
-                <h1 className="text-sm font-semibold text-white">{title}</h1>
-                {subtitle ? <p className="hidden sm:block text-xs text-slate-400">{subtitle}</p> : null}
-              </div>
-            </div>
-            <div>
-              <Link to="/notifications" className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-slate-900 text-slate-200 transition hover:bg-slate-800 shadow-md hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-300/25" aria-label="Notifications">
-                <Icon name="bell" className="h-5 w-5" />
-              </Link>
+          <div className="fixed inset-x-0 top-0 z-40 border-b border-slate-900/70 bg-slate-950/90 backdrop-blur-xl">
+            <div className="mx-auto flex max-w-6xl items-center justify-end px-4 py-2 sm:px-6">
+              {isProfileToolbarRoute ? (
+                <div className="flex w-full items-center justify-end gap-3">
+                  <Link
+                    to="/activity"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900/80 text-amber-300 transition hover:border-slate-500 hover:bg-slate-800"
+                    aria-label="Activity"
+                  >
+                    <Icon name="activity" className="h-5 w-5" />
+                  </Link>
+
+                  <Link
+                    to="/settings"
+                    className="group inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 text-slate-200 shadow-[0_10px_30px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-slate-500 hover:shadow-[0_16px_35px_rgba(15,23,42,0.45)] focus:outline-none focus:ring-2 focus:ring-slate-300/20"
+                    aria-label="Profile settings"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 transition-transform group-hover:rotate-90" aria-hidden="true">
+                      <path d="M12 3.5v2.2m0 14.6v2.2m8.5-8.5h-2.2M5.7 12H3.5m14.6-6.2-1.6 1.6M7.5 16.5l-1.6 1.6M7.5 7.5 5.9 5.9m12.2 12.2-1.6-1.6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                      <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.75" />
+                    </svg>
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex w-full items-center justify-end">
+                  <div className="flex w-full max-w-xl items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 shadow-[0_8px_30px_rgba(15,23,42,0.32)]">
+                    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-slate-500" aria-hidden="true">
+                      <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="2" />
+                      <path d="m16 16 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                    <input
+                      type="search"
+                      value={searchValue}
+                      onChange={(event) => onSearchChange?.(event.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder={searchPlaceholder}
+                      className="w-full bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
 
-      <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 sm:px-6">
-        <div className="space-y-6">{children}</div>
+      <main className="mx-auto max-w-6xl px-3 pb-24 pt-20 sm:px-6 sm:pb-28 sm:pt-24">
+        <div className="space-y-4 sm:space-y-6">{children}</div>
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-slate-950/98 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-center gap-6 px-3 py-1.5 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-2 py-1.5 sm:gap-6 sm:px-6">
           {navItems.map((item) => {
             const colorMap = {
               home: 'text-amber-400',

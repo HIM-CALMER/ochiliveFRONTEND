@@ -19,10 +19,10 @@ export default function FreshOnTheMicSection() {
       <div className="flex gap-4">
         {items.length === 0
           ? Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-20 w-20 animate-pulse rounded-full bg-slate-800" />
+              <div key={i} className="h-20 w-20 animate-pulse rounded-full bg-slate-900/80" />
             ))
           : items.map((it) => (
-              <div key={it.id} className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-slate-800">
+              <div key={it.id} className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-slate-900/80">
                 <img src={it.avatar || it.poster} alt={it.title} className="h-full w-full object-cover" />
               </div>
             ))}

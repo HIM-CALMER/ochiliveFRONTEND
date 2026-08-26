@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardShell from '../components/DashboardShell';
-import { createLiveRoom, getProfileSummary, startLiveRoom, uploadVideoPost } from '../api/dashboardApi';
+import { createLiveRoom, getProfileSummary, startLiveRoom, uploadVideoPost, uploadVideoFile } from '../api/dashboardApi';
 
 /* ---------------------------------------------------------------
    Iconography — thin, consistent 24px line system
@@ -242,7 +242,12 @@ function UploadPage() {
     setCameraLoading(true);
     try {
       const cameraStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: facing } },
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 },
+        },
         audio: mode === 'video',
       });
       setStream(cameraStream);
@@ -421,14 +426,26 @@ function UploadPage() {
     setStatus('Posting...');
 
     try {
-      await uploadVideoPost({
-        title: caption || 'New clip',
-        category: previewType === 'video' ? 'Video' : 'Photo',
-        description: caption,
-        mediaUrl: previewUrl,
-        thumbnailUrl: previewUrl,
-        type: previewType,
-      });
+        let mediaUrlToSend = previewUrl;
+        // If preview is a blob/data URL, upload the file first to get a persistent URL
+        if (previewType === 'video' && (previewUrl.startsWith('blob:') || previewUrl.startsWith('data:'))) {
+          const blob = await (await fetch(previewUrl)).blob();
+          const ext = (blob.type && blob.type.split('/')[1]) || 'webm';
+          const file = new File([blob], `upload_${Date.now()}.${ext}`, { type: blob.type || 'video/webm' });
+          const form = new FormData();
+          form.append('file', file);
+          const uploadResp = await uploadVideoFile(form);
+          mediaUrlToSend = uploadResp.url || mediaUrlToSend;
+        }
+
+        await uploadVideoPost({
+          title: caption || 'New clip',
+          category: previewType === 'video' ? 'Video' : 'Photo',
+          description: caption,
+          mediaUrl: mediaUrlToSend,
+          thumbnailUrl: mediaUrlToSend,
+          type: previewType,
+        });
       setStatus('Uploaded.');
       setPreviewUrl('');
       setCaption('');
@@ -722,7 +739,7 @@ function UploadPage() {
           </section>
 
           {/* Controls / details */}
-          <section className="up-scroll absolute inset-x-0 bottom-0 z-20 max-h-[34dvh] min-h-0 overflow-y-auto rounded-t-2xl border-t border-white/15 bg-slate-950/90 px-3 pb-[calc(.65rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-14px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:px-6 lg:relative lg:inset-auto lg:max-h-none lg:w-[380px] lg:flex-none lg:rounded-[28px] lg:border lg:px-5 lg:py-5 lg:shadow-none">
+          <section className="up-scroll pointer-events-none absolute inset-x-0 bottom-0 z-20 max-h-[34dvh] min-h-0 overflow-y-auto rounded-t-2xl border-t border-white/15 bg-transparent px-3 pb-[calc(.65rem+env(safe-area-inset-bottom))] pt-2 sm:px-6 lg:relative lg:inset-auto lg:max-h-none lg:w-[380px] lg:flex-none lg:rounded-[28px] lg:border lg:px-5 lg:py-5 lg:shadow-none">
             {/* mobile mode switcher */}
             <div
               role="tablist"
@@ -752,7 +769,7 @@ function UploadPage() {
             </div>
 
             {/* contextual panel */}
-            <div className="mt-4 lg:mt-0">
+            <div className="mt-4 lg:mt-0 pointer-events-auto">
               {screen === 'preview' ? (
                 <div key="p-preview" className="space-y-3">
                   {/* caption */}
@@ -979,7 +996,7 @@ function UploadPage() {
                       className="group relative inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
                     >
                       {recording && <span className="up-ring absolute inset-0 rounded-full border-2 border-rose-500/60" />}
-                      <span className="absolute inset-1 rounded-full bg-white shadow-2xl shadow-black/40 transition-transform duration-300 group-hover:scale-[1.04] group-active:scale-95" />
+                      <span className="absolute inset-1 rounded-full bg-white shadow-2xl shadow-black/40 transition-transform duration-150 group-active:scale-95" />
                       <span
                         className={`relative transition-all duration-300 ${
                           recording ? 'h-4 w-4 rounded-[5px] bg-slate-950' : 'h-4 w-4 rounded-full bg-rose-500'
