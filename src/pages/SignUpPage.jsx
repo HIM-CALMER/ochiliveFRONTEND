@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
@@ -87,11 +87,45 @@ function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
+  const [usernameStatus, setUsernameStatus] = useState({ state: 'idle', message: '', suggestions: [] });
   const passwordStrength = getPasswordStrength(form.password);
+
+  useEffect(() => {
+    const username = form.username.trim().toLowerCase();
+    if (!username) {
+      setUsernameStatus({ state: 'idle', message: '', suggestions: [] });
+      return undefined;
+    }
+    if (!/^[a-z0-9_]{3,24}$/.test(username)) {
+      setUsernameStatus({ state: 'invalid', message: 'Use 3-24 letters, numbers, or underscores.', suggestions: [] });
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setUsernameStatus({ state: 'checking', message: 'Checking availability...', suggestions: [] });
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await axios.get(buildApiUrl('/auth/username-availability'), { params: { username }, signal: controller.signal });
+        const data = response.data;
+        setUsernameStatus({
+          state: data.available ? 'available' : data.reason === 'reserved' ? 'reserved' : 'taken',
+          message: data.available ? 'Username is available.' : data.reason === 'reserved' ? 'This username is reserved by Ochi Live.' : 'That username is already taken.',
+          suggestions: data.suggestions || [],
+        });
+      } catch (error) {
+        if (error.name !== 'CanceledError' && error.name !== 'AbortError') setUsernameStatus({ state: 'error', message: 'Availability check unavailable. You can still try to continue.', suggestions: [] });
+      }
+    }, 400);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [form.username]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: name === 'username' ? value.toLowerCase().replace(/\s/g, '') : value }));
   };
 
   const handleSubmit = async (event) => {
@@ -204,6 +238,20 @@ function SignUpPage() {
                       className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950/80 px-4 py-3.5 text-sm text-white outline-none transition focus:border-rose-400 focus:ring-2 focus:ring-rose-500/20"
                       required
                     />
+                    {usernameStatus.message ? (
+                      <p className={`mt-2 text-xs ${usernameStatus.state === 'available' ? 'text-emerald-300' : usernameStatus.state === 'checking' ? 'text-slate-400' : 'text-rose-300'}`}>
+                        {usernameStatus.message}
+                      </p>
+                    ) : null}
+                    {usernameStatus.suggestions.length ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {usernameStatus.suggestions.map((suggestion) => (
+                          <button key={suggestion} type="button" onClick={() => setForm((prev) => ({ ...prev, username: suggestion }))} className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:border-rose-400 hover:text-white">
+                            @{suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                   </label>
 
                   <label className="block text-sm font-medium text-slate-300">

@@ -166,9 +166,9 @@ function LoginPage() {
                   <input type="checkbox" className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-rose-500 focus:ring-rose-500/30" />
                   Remember me
                 </label>
-                <a href="#" className="text-rose-300 transition hover:text-rose-200">
+                <Link to="/forgot-password" className="text-rose-300 transition hover:text-rose-200">
                   Forgot password?
-                </a>
+                </Link>
               </div>
 
               {message ? (

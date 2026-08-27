@@ -76,6 +76,8 @@ export default function DashboardShell({
   onSearchChange,
   onSearchSubmit,
   onSearchKeyDown,
+  searchInputRef,
+  showSearch = true,
   searchPlaceholder = 'Search creators by name or username',
 }) {
   const location = useLocation();
@@ -110,10 +112,14 @@ export default function DashboardShell({
                 </div>
 
                 <div className="flex flex-1 justify-end">
-                  <div className="flex w-full max-w-[180px] items-center rounded-full bg-slate-950/80 px-2.5 py-1.5 shadow-sm sm:max-w-[280px] sm:px-3 sm:py-2">
-                    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-slate-400" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2.2" /><path d="m16.65 16.65 3.7 3.7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
-                    <input type="search" placeholder="Search" className="ml-2 w-full bg-transparent text-xs text-slate-300 outline-none placeholder:text-slate-500 sm:text-sm" />
-                  </div>
+                  <Link
+                    to="/discover?focus=search"
+                    className="group inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-950/80 text-slate-400 shadow-sm transition hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-400/40 sm:h-10 sm:w-10"
+                    aria-label="Search creators and content"
+                    title="Search"
+                  >
+                    <Icon name="search" className="h-4 w-4 transition-transform group-hover:scale-110 sm:h-5 sm:w-5" />
+                  </Link>
                 </div>
               </div>
             </div>
@@ -142,7 +148,7 @@ export default function DashboardShell({
                     </svg>
                   </Link>
                 </div>
-              ) : (
+              ) : showSearch ? (
                 <div className="flex w-full items-center justify-end">
                   <div className="flex w-full max-w-xl items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 shadow-[0_8px_30px_rgba(15,23,42,0.32)]">
                     <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-slate-500" aria-hidden="true">
@@ -150,6 +156,7 @@ export default function DashboardShell({
                       <path d="m16 16 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                     </svg>
                     <input
+                      ref={searchInputRef}
                       type="search"
                       value={searchValue}
                       onChange={(event) => onSearchChange?.(event.target.value)}
@@ -159,7 +166,7 @@ export default function DashboardShell({
                     />
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         )}
@@ -169,8 +176,8 @@ export default function DashboardShell({
         <div className="space-y-4 sm:space-y-6">{children}</div>
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-slate-950/98 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-2 py-1.5 sm:gap-6 sm:px-6">
+      <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-slate-950/98 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+        <div className="mx-auto grid max-w-6xl grid-cols-5 items-stretch px-1 py-1.5 sm:flex sm:items-center sm:justify-center sm:gap-6 sm:px-6 sm:py-1.5">
           {navItems.map((item) => {
             const colorMap = {
               home: 'text-amber-400',
@@ -186,28 +193,18 @@ export default function DashboardShell({
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `group flex-none flex-col items-center justify-center gap-1 px-1 py-1.5 sm:flex-row sm:px-3 sm:py-2 ${
-                    isActive ? 'text-white' : 'text-slate-400'
+                  `group relative flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-[10px] font-medium transition-colors sm:min-h-0 sm:flex-row sm:gap-1 sm:px-3 sm:py-2 sm:text-sm ${
+                    isActive ? 'font-semibold text-white' : 'text-slate-400 hover:text-slate-200'
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
-                    {item.icon === 'upload' ? (
-                      <span className="relative inline-flex items-center justify-center">
-                        <span className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 opacity-40 blur-sm animate-[pulse_1000ms_infinite]" />
-                        <span className="relative inline-flex items-center justify-center h-12 w-12 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 text-white shadow-[0_24px_70px_-32px_rgba(245,158,11,0.45)] transform transition group-hover:scale-105 ring-3 ring-amber-500/30">
-                          <span className={`inline-flex h-5 w-5 items-center justify-center ${isActive ? 'text-white' : colorMap[item.icon]}`}>
-                            <Icon name={item.icon} className="h-5 w-5" />
-                          </span>
-                        </span>
-                      </span>
-                    ) : (
-                      <span className={`inline-flex h-6 w-6 items-center justify-center ${isActive ? 'text-white' : colorMap[item.icon]}`}>
-                        <Icon name={item.icon} className="h-5 w-5" />
-                      </span>
-                    )}
-                    <span className="hidden sm:inline-block text-sm">{item.label}</span>
+                    <span className={`inline-flex h-7 w-7 items-center justify-center ${isActive ? 'text-white' : colorMap[item.icon]}`}>
+                      <Icon name={item.icon} className="h-5 w-5 transition-transform group-active:scale-90" />
+                    </span>
+                    <span className="truncate leading-4">{item.label}</span>
+                    <span className={`absolute bottom-0 h-0.5 rounded-full bg-rose-300 transition-all duration-200 sm:hidden ${isActive ? 'w-5 opacity-100' : 'w-0 opacity-0'}`} />
                   </>
                 )}
               </NavLink>

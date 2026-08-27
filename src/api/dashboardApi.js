@@ -153,8 +153,18 @@ export const startLiveRoom = async (id) => {
   return data;
 };
 
-export const getNotifications = async () => {
-  const { data } = await api.get('/dashboard/notifications');
+export const getNotifications = async (type) => {
+  const { data } = await api.get('/dashboard/notifications', { params: type && type !== 'all' ? { type } : undefined });
+  return data;
+};
+
+export const markNotificationRead = async (id) => {
+  const { data } = await api.patch(`/dashboard/notifications/${id}/read`);
+  return data;
+};
+
+export const markAllNotificationsRead = async () => {
+  const { data } = await api.post('/dashboard/notifications/read-all');
   return data;
 };
 

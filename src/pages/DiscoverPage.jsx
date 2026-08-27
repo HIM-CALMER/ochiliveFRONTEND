@@ -1,5 +1,5 @@
 ﻿import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardShell from '../components/DashboardShell';
 import SponsoredBanner from '../components/discovery/SponsoredBanner';
 import screenLogo from '../assets/animations/screen.png';
@@ -14,15 +14,8 @@ const RECENT_SEARCH_KEY = 'ochi_recent_searches';
 
 function DiscoverPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const searchInputRef = useRef(null);
-  const sessionUser = (() => {
-    try {
-      return JSON.parse(sessionStorage.getItem('ochi_user') || 'null');
-    } catch {
-      return null;
-    }
-  })();
-  const currentUsername = String(sessionUser?.username || sessionUser?.email?.split('@')[0] || '').trim().toLowerCase();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -35,6 +28,12 @@ function DiscoverPage() {
       return [];
     }
   });
+
+  useEffect(() => {
+    if (searchParams.get('focus') === 'search') {
+      searchInputRef.current?.focus();
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     getDiscoverItems().catch(() => {});
@@ -163,6 +162,7 @@ function DiscoverPage() {
         subtitle="Curated and trending content"
         className="px-0"
         searchValue={searchTerm}
+        searchInputRef={searchInputRef}
         onSearchChange={handleInputChange}
         onSearchSubmit={handleSearch}
         onSearchKeyDown={handleSearchKeyDown}
@@ -175,30 +175,11 @@ function DiscoverPage() {
               <div className="flex items-start gap-3 sm:gap-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-lg text-slate-200 sm:h-12 sm:w-12 sm:text-xl">⌕</div>
                 <div className="min-w-0 flex-1">
-                  {currentUsername && searchTerm.trim().toLowerCase() === currentUsername ? (
-                    <>
-                      <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500 sm:text-xs">Your profile</p>
-                      <h2 className="mt-2 text-lg font-semibold text-white sm:text-xl">This matches your own profile.</h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-400">
-                        Search excludes your own account in discovery, so view your profile directly from here.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => navigate('/profile')}
-                        className="mt-4 rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-100 hover:border-slate-500 hover:text-white"
-                      >
-                        Go to my profile
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500 sm:text-xs">No creator found</p>
-                      <h2 className="mt-2 text-lg font-semibold text-white sm:text-xl">No results for “{searchTerm.trim()}”</h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-400">
-                        Try a username, full name, or a broader keyword. Profiles are shown only when the creator is already registered on Ochi Live.
-                      </p>
-                    </>
-                  )}
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500 sm:text-xs">No creator found</p>
+                  <h2 className="mt-2 text-lg font-semibold text-white sm:text-xl">No results for “{searchTerm.trim()}”</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-400">
+                    Try a username, full name, or a broader keyword. Profiles are shown only when the creator is already registered on Ochi Live.
+                  </p>
                   {recentSearches.length ? (
                     <div className="mt-4 flex flex-wrap gap-2">
                       {recentSearches.slice(0, 4).map((term) => (

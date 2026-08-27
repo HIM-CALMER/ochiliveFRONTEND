@@ -189,7 +189,7 @@ function HomePage() {
           handleSwipe();
         }}
       >
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex gap-5 overflow-x-auto border-b border-slate-800/80 no-scrollbar sm:gap-7">
           {tabs.map((tab) => {
             const active = tab.key === activeTab;
             return (
@@ -197,10 +197,10 @@ function HomePage() {
                 key={tab.key}
                 type="button"
                 onClick={() => handleSelectTab(tab.key)}
-                className={`rounded-full px-2.5 py-1.5 text-xs font-semibold tracking-[-0.01em] transition-all duration-200 sm:px-3.5 sm:py-2 sm:text-sm ${
+                className={`relative shrink-0 border-b-2 px-0 pb-2.5 pt-1 text-sm font-semibold tracking-normal transition-all duration-200 sm:pb-3 sm:text-sm ${
                   active
-                    ? 'bg-white text-slate-950 shadow-[0_2px_8px_rgba(255,255,255,0.12)]'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'border-rose-300 text-white'
+                    : 'border-transparent text-slate-400 hover:border-slate-600 hover:text-slate-200'
                 }`}
               >
                 {tab.label}
