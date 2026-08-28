@@ -10,7 +10,7 @@ export default function WalletRevenue() {
   const totalRevenue = Object.values(sources).reduce((sum, amount) => sum + (amount || 0), 0);
 
   return (
-    <DashboardShell title="Ochi Wallet" subtitle="Revenue metrics for your creator wallet">
+    <DashboardShell title="Ochi Wallet" subtitle="Revenue metrics for your creator wallet" showBack backFallback="/wallet">
       <div className="space-y-6">
         <div className="page-section border border-slate-800 bg-slate-950 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

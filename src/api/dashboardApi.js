@@ -92,6 +92,16 @@ export const getWalletSummary = async () => {
   return data;
 };
 
+export const initializeWalletFunding = async (amount, currency = 'NGN') => {
+  const { data } = await api.post('/dashboard/wallet/fund/initialize', { amount, currency });
+  return data;
+};
+
+export const verifyWalletFunding = async (reference) => {
+  const { data } = await api.get('/dashboard/wallet/fund/verify', { params: { reference } });
+  return data;
+};
+
 export const getProfileSummary = async (username) => {
   const user = JSON.parse(sessionStorage.getItem('ochi_user') || 'null');
   const target = username || user?.username || user?.email?.split('@')[0] || 'creator';

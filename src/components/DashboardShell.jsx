@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import screenLogo from '../assets/animations/screen.png';
 
 const navItems = [
   { label: 'Home', path: '/home', icon: 'home' },
   { label: 'Discover', path: '/discover', icon: 'search' },
-  { label: 'Upload', path: '/upload', icon: 'upload' },
+  { label: 'Activity', path: '/activity', icon: 'activity' },
   { label: 'Wallet', path: '/wallet', icon: 'wallet' },
   { label: 'Profile', path: '/profile', icon: 'user' },
 ];
@@ -29,10 +29,21 @@ function Icon({ name, className }) {
     case 'upload':
       return (
         <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-          <path d="M12 4v9" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M8 10l4-4 4 4" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-          <rect x="6" y="15" width="12" height="3" rx="1.5" fill="currentColor" opacity="0.12" />
-          <path d="M6 15h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+          <path d="M12 3v11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="m8 7 4-4 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M5 14.5v3A2.5 2.5 0 0 0 7.5 20h9a2.5 2.5 0 0 0 2.5-2.5v-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      );
+    case 'plus':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
+        </svg>
+      );
+    case 'settings':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+          <path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
         </svg>
       );
     case 'user':
@@ -78,9 +89,12 @@ export default function DashboardShell({
   onSearchKeyDown,
   searchInputRef,
   showSearch = true,
+  showBack = false,
+  backFallback = '/home',
   searchPlaceholder = 'Search creators by name or username',
 }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const isHome = location.pathname === '/' || location.pathname === '/home';
   const isProfileRoute = location.pathname === '/profile' || location.pathname.startsWith('/profile/');
   const isSettingsRoute = location.pathname === '/settings';
@@ -126,26 +140,38 @@ export default function DashboardShell({
           </div>
         ) : (
           <div className="fixed inset-x-0 top-0 z-40 border-b border-slate-900/70 bg-slate-950/90 backdrop-blur-xl">
-            <div className="mx-auto flex max-w-6xl items-center justify-end px-4 py-2 sm:px-6">
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
+              {showBack ? (
+                <button
+                  type="button"
+                  onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(backFallback))}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-300 transition hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-slate-300/30"
+                  aria-label="Go back"
+                  title="Go back"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+                    <path d="m15 5-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              ) : <span />}
               {isProfileToolbarRoute ? (
                 <div className="flex w-full items-center justify-end gap-3">
                   <Link
-                    to="/activity"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900/80 text-amber-300 transition hover:border-slate-500 hover:bg-slate-800"
-                    aria-label="Activity"
+                    to="/upload"
+                    className="group inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-rose-300/60 bg-gradient-to-br from-rose-500 to-amber-500 px-3 text-white shadow-[0_8px_22px_-8px_rgba(244,63,94,0.85)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(244,63,94,0.95)] focus:outline-none focus:ring-2 focus:ring-rose-300/50"
+                    aria-label="Upload content"
+                    title="Upload content"
                   >
-                    <Icon name="activity" className="h-5 w-5" />
+                    <Icon name="plus" className="h-6 w-6 transition-transform group-hover:scale-110" />
+                    <span className="text-sm font-semibold">Upload</span>
                   </Link>
 
                   <Link
                     to="/settings"
-                    className="group inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 text-slate-200 shadow-[0_10px_30px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-slate-500 hover:shadow-[0_16px_35px_rgba(15,23,42,0.45)] focus:outline-none focus:ring-2 focus:ring-slate-300/20"
+                    className="group inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900/80 text-slate-200 shadow-[0_10px_30px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:border-sky-300/50 hover:bg-slate-800 hover:text-sky-200 hover:shadow-[0_16px_35px_rgba(15,23,42,0.45)] focus:outline-none focus:ring-2 focus:ring-sky-300/30"
                     aria-label="Profile settings"
                   >
-                    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 transition-transform group-hover:rotate-90" aria-hidden="true">
-                      <path d="M12 3.5v2.2m0 14.6v2.2m8.5-8.5h-2.2M5.7 12H3.5m14.6-6.2-1.6 1.6M7.5 16.5l-1.6 1.6M7.5 7.5 5.9 5.9m12.2 12.2-1.6-1.6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-                      <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="1.75" />
-                    </svg>
+                    <Icon name="settings" className="h-5 w-5 transition-transform group-hover:rotate-12" />
                   </Link>
                 </div>
               ) : showSearch ? (

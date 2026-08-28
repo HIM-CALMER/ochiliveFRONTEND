@@ -11,7 +11,7 @@ export default function WalletWithdrawals() {
   const balanceValue = typeof safeWallet.availableBalance === 'number' ? safeWallet.availableBalance : 0;
 
   return (
-    <DashboardShell title="Ochi Wallet" subtitle="Withdrawal controls and payout history">
+    <DashboardShell title="Ochi Wallet" subtitle="Withdrawal controls and payout history" showBack backFallback="/wallet">
       <div className="space-y-6">
         <div className="border border-slate-800 bg-slate-950 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -17,6 +17,9 @@ function ActivityPage() {
     <DashboardShell
       title="Actionable activity feed"
       subtitle="A mature activity stream for creator updates, key notifications, and real-time event insights."
+      showSearch={false}
+      showBack
+      backFallback="/home"
     >
       <div className="rounded-2xl bg-slate-900/95 p-6">
         {loading ? (

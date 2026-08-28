@@ -207,37 +207,8 @@ function SettingsPage() {
   };
 
   return (
-    <DashboardShell title="Settings" subtitle="Manage your creator profile and account controls">
-      <div className="rounded-[1.75rem] border border-slate-800 bg-slate-950/80 p-4 sm:p-6">
-        <div className="mb-5 rounded-[1.5rem] border border-slate-800 bg-slate-900/80 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.2)]">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-violet-500 to-sky-500 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(168,85,247,0.25)]">
-                OC
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Profile</p>
-                <h2 className="mt-0.5 text-lg font-semibold text-white">Ochi Creator</h2>
-                <p className="text-xs text-slate-400">@creator</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[9px] uppercase tracking-[0.18em] text-emerald-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                Public
-              </span>
-              <button
-                type="button"
-                onClick={() => setEditingProfile(true)}
-                className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[9px] uppercase tracking-[0.16em] text-slate-200 transition hover:border-slate-500 hover:text-white"
-              >
-                Edit
-              </button>
-            </div>
-          </div>
-        </div>
-
+    <DashboardShell title="Settings" subtitle="Manage your creator profile and account controls" showBack backFallback="/profile">
+      <div className="bg-slate-950/40 p-0 sm:p-2">
         {saveMessage ? (
           <div className="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
             {saveMessage}
@@ -254,10 +225,10 @@ function SettingsPage() {
                   key={section.id}
                   type="button"
                   onClick={() => setSelectedId(section.id)}
-                  className={`w-full rounded-2xl border p-3 text-left transition ${
+                  className={`w-full border-b border-slate-800/80 p-3 text-left transition ${
                     isActive
-                      ? 'border-slate-700 bg-slate-900/90 shadow-[0_18px_40px_rgba(15,23,42,0.2)]'
-                      : 'border-slate-800 bg-slate-950/70 hover:border-slate-700 hover:bg-slate-900/80'
+                      ? 'bg-slate-900/80 text-white'
+                      : 'bg-transparent hover:bg-slate-900/60'
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -277,7 +248,7 @@ function SettingsPage() {
             })}
           </div>
 
-          <div className="rounded-[1.5rem] border border-slate-800 bg-slate-900/80 p-4 sm:p-5">
+          <div className="bg-slate-900/50 p-4 sm:p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${selectedSection.accent} text-slate-100`}>
@@ -298,7 +269,7 @@ function SettingsPage() {
                 const isToggle = typeof control.enabled === 'boolean';
 
                 return (
-                  <div key={control.key} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3 sm:p-4">
+                  <div key={control.key} className="border-b border-slate-800/80 bg-slate-950/30 p-3 last:border-b-0 sm:p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-white">{control.label}</p>

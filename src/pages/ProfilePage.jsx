@@ -5,9 +5,7 @@ import { getProfileSummary, getProfilePosts, getProfileReshares } from '../api/d
 import ProfileHeader from '../components/profile/ProfileHeader';
 import StatsBar from '../components/profile/StatsBar';
 import TabsSection from '../components/profile/TabsSection';
-import WalletLink from '../components/profile/WalletLink';
 import ContentGrid from '../components/profile/ContentGrid';
-import ProfileEditor from '../components/profile/ProfileEditor';
 import ComedyOnboarding from '../components/profile/ComedyOnboarding';
 
 const fallbackProfile = {
@@ -126,11 +124,6 @@ function ProfilePage() {
     }));
   };
 
-  const handleProfileSaved = (result) => {
-    setProfile((current) => ({ ...current, ...result }));
-    if (result.user) sessionStorage.setItem('ochi_user', JSON.stringify(result.user));
-  };
-
   const handleComedyComplete = (result) => {
     setProfile((current) => ({ ...current, ...result, user: { ...current.user, ...result.user, accountType: 'comedian' }, relationship: { ...current.relationship, ...result.relationship } }));
     if (result.user) sessionStorage.setItem('ochi_user', JSON.stringify(result.user));
@@ -167,12 +160,7 @@ function ProfilePage() {
       {loading ? (
         <div className="border border-slate-800 bg-slate-950 p-8 text-slate-400">Loading profile details...</div>
       ) : (
-        <div className="border border-slate-800 bg-slate-950">
-          {profile.relationship?.isOwnProfile ? (
-            <div className="flex justify-end border-b border-slate-800 px-4 py-3 sm:px-8">
-              <WalletLink />
-            </div>
-          ) : null}
+        <div className="bg-slate-950/20">
           <div className="px-4 pb-8 pt-7 sm:px-8 sm:pt-10">
             {profileError ? (
               <div className="mb-4 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs text-slate-400">
@@ -180,7 +168,6 @@ function ProfilePage() {
               </div>
             ) : null}
             <ProfileHeader user={profile.user} relationship={profile.relationship} onFollowChange={handleFollowChange} onShare={handleShare} onTryComedy={() => setShowComedyOnboarding(true)} />
-            {profile.relationship?.isOwnProfile ? <ProfileEditor profile={profile.user} onSaved={handleProfileSaved} /> : null}
             <StatsBar stats={profile.stats} onSelect={handleStatSelect} />
             <TabsSection activeTab={activeTab} onChange={setActiveTab} />
             {activeTab === 'about' ? (

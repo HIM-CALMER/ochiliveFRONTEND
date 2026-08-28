@@ -12,7 +12,7 @@ export default function WalletOverview() {
   const platformCommission = typeof safeWallet.platformCommission === 'number' ? safeWallet.platformCommission : 0;
 
   return (
-    <DashboardShell title="Ochi Wallet" subtitle="Overview of your creator wallet balances">
+    <DashboardShell title="Ochi Wallet" subtitle="Overview of your creator wallet balances" showBack backFallback="/wallet">
       <div className="space-y-6">
         <WalletHeader currency={currency} conversionRate={safeWallet.currency === 'USD' ? 1 : 1} />
 
