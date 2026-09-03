@@ -92,8 +92,8 @@ export const getWalletSummary = async () => {
   return data;
 };
 
-export const initializeWalletFunding = async (amount, currency = 'NGN') => {
-  const { data } = await api.post('/dashboard/wallet/fund/initialize', { amount, currency });
+export const initializeWalletFunding = async (amount, currency = 'NGN', callbackUrl) => {
+  const { data } = await api.post('/dashboard/wallet/fund/initialize', { amount, currency, callbackUrl });
   return data;
 };
 

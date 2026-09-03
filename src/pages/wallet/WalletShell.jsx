@@ -45,6 +45,12 @@ export default function WalletShell() {
 
   useEffect(() => {
     const reference = searchParams.get('reference') || searchParams.get('trxref');
+    const paymentStatus = searchParams.get('status');
+    if (paymentStatus === 'cancelled' || paymentStatus === 'failed') {
+      setFundMessage('Payment was not completed. Your wallet was not charged.');
+      setSearchParams({}, { replace: true });
+      return;
+    }
     if (!reference) return;
     setVerifyingPayment(true);
     setFundMessage('Confirming your payment...');
@@ -69,7 +75,8 @@ export default function WalletShell() {
     setFunding(true);
     setFundMessage('');
     try {
-      const result = await initializeWalletFunding(Number(fundAmount), summary.currency);
+      const callbackUrl = `${window.location.origin}/wallet`;
+      const result = await initializeWalletFunding(Number(fundAmount), summary.currency, callbackUrl);
       window.location.assign(result.authorizationUrl);
     } catch (error) {
       setFundMessage(error?.response?.data?.message || 'Unable to start payment.');
