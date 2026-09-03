@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import DashboardShell from '../components/DashboardShell';
+import { getProfileSummary } from '../api/dashboardApi';
 import { messageApi } from '../api/messageApi';
 import { useMessageSocket } from '../hooks/useMessageSocket';
 
@@ -133,6 +135,7 @@ function Message({ message, sessionUser, onAddReaction }) {
 }
 
 function MessagesPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('messages');
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
@@ -143,6 +146,8 @@ function MessagesPage() {
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const [typingUsers, setTypingUsers] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
+  const [directMessageTarget, setDirectMessageTarget] = useState(null);
+  const [isMobileConversationOpen, setIsMobileConversationOpen] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Get session user
@@ -187,9 +192,72 @@ function MessagesPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleOpenConversation = (conversation) => {
+    setSelectedConversation(conversation);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsMobileConversationOpen(true);
+    }
+  };
+
+  const handleCloseConversation = () => {
+    setSelectedConversation(null);
+    setDirectMessageTarget(null);
+    setIsMobileConversationOpen(false);
+    setMessageText('');
+    setSearchParams({});
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024 && (selectedConversation || directMessageTarget)) {
+      setIsMobileConversationOpen(true);
+    }
+  }, [selectedConversation, directMessageTarget]);
+
+  useEffect(() => {
+    const targetUsername = searchParams.get('user');
+    if (!targetUsername) {
+      setDirectMessageTarget(null);
+      return;
+    }
+
+    const sessionUser = (() => {
+      try {
+        return JSON.parse(sessionStorage.getItem('ochi_user') || '{}');
+      } catch {
+        return {};
+      }
+    })();
+
+    if (targetUsername.toLowerCase() === String(sessionUser.username || '').toLowerCase()) {
+      setDirectMessageTarget(null);
+      return;
+    }
+
+    let ignore = false;
+    getProfileSummary(targetUsername)
+      .then((data) => {
+        if (ignore) return;
+        const user = data?.user || null;
+        if (!user) return;
+        setDirectMessageTarget({
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          accountType: user.accountType,
+        });
+      })
+      .catch(() => {
+        if (!ignore) setDirectMessageTarget(null);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [searchParams]);
 
   // Fetch conversations
   useEffect(() => {
@@ -197,9 +265,41 @@ function MessagesPage() {
       setLoading(true);
       try {
         const data = await messageApi.getConversations(activeTab);
-        setConversations(data.data || []);
-        setSelectedConversation(null);
-        setMessages([]);
+        const nextConversations = data.data || [];
+        setConversations(nextConversations);
+
+        const visibleCounts = {
+          messages: nextConversations.filter((convo) => convo.inboxType === 'messages').length,
+          connections: nextConversations.filter((convo) => convo.inboxType === 'connections').length,
+          requests: nextConversations.filter((convo) => convo.inboxType === 'requests').length,
+        };
+
+        TABS.forEach((tab) => {
+          tab.count = visibleCounts[tab.id] || 0;
+        });
+
+        if (directMessageTarget) {
+          const existingThread = nextConversations.find((conversation) => {
+            const otherUser = conversation?.otherUser || {};
+            return String(otherUser.id || '').toLowerCase() === String(directMessageTarget.id || '').toLowerCase()
+              || String(otherUser.username || '').toLowerCase() === String(directMessageTarget.username || '').toLowerCase();
+          });
+
+          if (existingThread) {
+            setSelectedConversation(existingThread);
+            setMessages([]);
+          } else {
+            setSelectedConversation({
+              conversationId: null,
+              otherUser: directMessageTarget,
+              isAccepted: true,
+            });
+            setMessages([]);
+          }
+        } else {
+          setSelectedConversation(null);
+          setMessages([]);
+        }
       } catch (error) {
         console.error('Error fetching conversations:', error);
       } finally {
@@ -208,11 +308,11 @@ function MessagesPage() {
     };
 
     fetchConversations();
-  }, [activeTab]);
+  }, [activeTab, directMessageTarget]);
 
   // Fetch messages for selected conversation
   useEffect(() => {
-    if (!selectedConversation) return;
+    if (!selectedConversation || !selectedConversation.conversationId) return;
 
     const fetchMessages = async () => {
       setChatLoading(true);
@@ -237,18 +337,41 @@ function MessagesPage() {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!messageText.trim() || !selectedConversation) return;
+    if (!messageText.trim()) return;
+
+    const receiver = selectedConversation?.otherUser || directMessageTarget;
+    if (!receiver?.id) return;
 
     try {
-      const response = await messageApi.sendMessage(selectedConversation.otherUser.id, messageText);
+      const response = await messageApi.sendMessage(receiver.id, messageText);
 
       if (response.success) {
+        const nextConversationId = response.data?.conversationId || selectedConversation?.conversationId;
+        const nextConversation = nextConversationId
+          ? {
+              conversationId: nextConversationId,
+              otherUser: receiver,
+              isAccepted: true,
+            }
+          : {
+              conversationId: null,
+              otherUser: receiver,
+              isAccepted: true,
+            };
+
+        setSelectedConversation(nextConversation);
+        setDirectMessageTarget(null);
+        setSearchParams({});
         setMessageText('');
         sendTypingIndicator(false);
 
-        // Refresh messages
-        const data = await messageApi.getMessages(selectedConversation.conversationId);
-        setMessages(data.data || []);
+        if (nextConversationId) {
+          const data = await messageApi.getMessages(nextConversationId);
+          setMessages(data.data || []);
+        }
+
+        const list = await messageApi.getConversations(activeTab);
+        setConversations(list.data || []);
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -298,6 +421,10 @@ function MessagesPage() {
     }
   };
 
+  const totalUnread = conversations.filter((conversation) => conversation.isUnread).length;
+
+  const showMobileChat = Boolean(selectedConversation || directMessageTarget) && isMobileConversationOpen;
+
   return (
     <DashboardShell
       title="Messages"
@@ -305,178 +432,273 @@ function MessagesPage() {
       showSearch={false}
       showBack={false}
     >
-      <div className="grid gap-4 lg:grid-cols-[320px_1fr] h-[calc(100vh-200px)]">
-        {/* Conversations Sidebar */}
-        <div className="space-y-2 flex flex-col">
-          {/* Tabs */}
-          <div className="flex gap-1 overflow-x-auto border-b border-slate-800 pb-2">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`group relative flex items-center gap-2 px-2 py-1 text-sm font-medium transition whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'border-b-2 border-violet-400 text-white'
-                    : 'border-b-2 border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Icon name={tab.icon} className="h-4 w-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            ))}
-          </div>
+      <div className="-mx-3 h-[calc(100dvh-118px)] px-0 pb-1 sm:mx-0 sm:h-[calc(100vh-158px)] lg:h-[calc(100vh-175px)]">
+        <div className="grid h-full gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <aside className={`${showMobileChat ? 'hidden' : 'flex'} h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-950/60 lg:flex`}>
+            <div className="border-b border-slate-800/80 px-3 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Inbox</p>
+                  <h2 className="mt-1 text-xl font-semibold text-white">Messages</h2>
+                </div>
+                {totalUnread > 0 && (
+                  <span className="inline-flex min-w-[22px] items-center justify-center rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-semibold text-slate-900">
+                    {totalUnread > 9 ? '9+' : totalUnread}
+                  </span>
+                )}
+              </div>
 
-          {/* Conversations List */}
-          <div className="flex-1 overflow-y-auto space-y-1 rounded-xl border border-slate-800 bg-slate-900/30 p-2">
-            {loading ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 rounded-lg bg-slate-800/50 animate-pulse" />
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap transition ${
+                      activeTab === tab.id
+                        ? 'border-slate-700 bg-slate-200 text-slate-950'
+                        : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                    }`}
+                  >
+                    <Icon name={tab.icon} className="h-3.5 w-3.5" />
+                    {tab.label}
+                    {tab.count > 0 && (
+                      <span className="inline-flex min-w-[16px] items-center justify-center rounded-full bg-slate-700 px-1 py-0.5 text-[9px] font-semibold text-slate-100">
+                        {tab.count > 9 ? '9+' : tab.count}
+                      </span>
+                    )}
+                  </button>
                 ))}
               </div>
-            ) : conversations.length === 0 ? (
-              <div className="py-8 text-center text-sm text-slate-400">
-                {activeTab === 'messages' && '📭 No active conversations'}
-                {activeTab === 'connections' && '🤝 No creator connections'}
-                {activeTab === 'requests' && '❓ No pending requests'}
-              </div>
-            ) : (
-              conversations.map((conv) => (
-                <button
-                  key={conv.conversationId}
-                  onClick={() => setSelectedConversation(conv)}
-                  className={`w-full rounded-lg px-3 py-2 text-left transition ${
-                    selectedConversation?.conversationId === conv.conversationId
-                      ? 'bg-violet-500/20 border border-violet-500/30'
-                      : 'bg-slate-800/40 hover:bg-slate-800/60 border border-transparent'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 flex-shrink-0 rounded-full bg-gradient-to-br from-violet-400 to-rose-400 flex items-center justify-center text-sm font-bold text-white">
-                      {conv.otherUser?.profilePictureUrl ? (
-                        <img src={conv.otherUser.profilePictureUrl} alt={conv.otherUser.name} className="h-full w-full rounded-full object-cover" />
-                      ) : (
-                        conv.otherUser?.username?.[0]?.toUpperCase() || 'U'
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-semibold text-white">{conv.otherUser?.name}</p>
-                        {conv.otherUser?.accountType === 'comedian' && <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-400" title="Comedian" />}
-                      </div>
-                      <p className="truncate text-xs text-slate-400">@{conv.otherUser?.username}</p>
-                      {conv.lastMessage && (
-                        <p className="truncate text-xs text-slate-500 mt-1 line-clamp-1">{conv.lastMessage}</p>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
+            </div>
 
-        {/* Chat Window */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 flex flex-col overflow-hidden">
-          {selectedConversation ? (
-            <>
-              {/* Chat Header */}
-              <div className="border-b border-slate-800 bg-slate-900/80 p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-400 to-rose-400 flex items-center justify-center text-sm font-bold text-white">
-                    {selectedConversation.otherUser?.profilePictureUrl ? (
-                      <img src={selectedConversation.otherUser.profilePictureUrl} alt={selectedConversation.otherUser.name} className="h-full w-full rounded-full object-cover" />
-                    ) : (
-                      selectedConversation.otherUser?.username?.[0]?.toUpperCase() || 'U'
-                    )}
-                  </div>
+            <div className="no-scrollbar flex-1 overflow-y-auto p-2">
+              {loading ? (
+                <div className="space-y-2 pt-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-16 animate-pulse rounded-xl bg-slate-800/60" />
+                  ))}
+                </div>
+              ) : conversations.length === 0 ? (
+                <div className="flex h-full items-center justify-center px-4 pt-8 text-center">
                   <div>
-                    <p className="text-sm font-semibold text-white">{selectedConversation.otherUser?.name}</p>
-                    <p className="text-xs text-slate-400">@{selectedConversation.otherUser?.username}</p>
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-800 text-lg text-slate-200">✦</div>
+                    <p className="text-sm font-medium text-slate-200">
+                      {activeTab === 'messages' && 'No messages yet'}
+                      {activeTab === 'connections' && 'No connections yet'}
+                      {activeTab === 'requests' && 'No requests'}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {activeTab === 'messages' && 'New chats will appear here.'}
+                      {activeTab === 'connections' && 'Connect with creators you care about.'}
+                      {activeTab === 'requests' && 'Requests will show up here.'}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {selectedConversation.otherUser?.accountType === 'comedian' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/20 px-2 py-1 text-xs text-rose-200">
-                      <span className="h-2 w-2 rounded-full bg-rose-400" />
-                      Comedian
-                    </span>
-                  )}
-                  <button className="p-2 hover:bg-slate-800 rounded-full transition" title="More options">
-                    ⋯
-                  </button>
-                </div>
-              </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {conversations.map((conv) => {
+                    const isSelected = selectedConversation?.conversationId === conv.conversationId;
+                    const otherUser = conv.otherUser || {};
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-950/40">
-                {chatLoading ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-8 rounded bg-slate-800/50 animate-pulse" />
-                    ))}
-                  </div>
-                ) : messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-slate-400 text-center">
-                    <div>
-                      <div className="text-3xl mb-2">💬</div>
-                      <p className="text-sm">No messages yet. Start the conversation!</p>
-                    </div>
-                  </div>
-                ) : (
-                  messages.map((msg) => <Message key={msg._id} message={msg} sessionUser={sessionUser} onAddReaction={handleAddReaction} />)
-                )}
+                    return (
+                      <button
+                        key={conv.conversationId}
+                        onClick={() => handleOpenConversation(conv)}
+                        className={`w-full rounded-xl border px-2.5 py-2.5 text-left transition ${
+                          isSelected
+                            ? 'border-slate-700 bg-slate-900'
+                            : conv.isUnread
+                              ? 'border-slate-800 bg-slate-900/75 hover:bg-slate-900'
+                              : 'border-transparent bg-slate-950/30 hover:bg-slate-900/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-full bg-slate-700 ring-1 ring-slate-800">
+                            {otherUser.profilePictureUrl ? (
+                              <img src={otherUser.profilePictureUrl} alt={otherUser.name || otherUser.username} className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="flex h-full w-full items-center justify-center text-xs font-semibold text-white">
+                                {(otherUser.username || 'U').slice(0, 1).toUpperCase()}
+                              </span>
+                            )}
+                            {conv.isUnread && (
+                              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-slate-950 bg-slate-200" aria-label="Unread message" />
+                            )}
+                          </div>
 
-                {Object.values(typingUsers).some((v) => v) && (
-                  <div className="flex items-center gap-2 text-slate-400 text-sm">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                    <span>Someone is typing...</span>
-                  </div>
-                )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className={`truncate text-sm font-medium ${conv.isUnread ? 'text-white' : 'text-slate-200'}`}>
+                                {otherUser.name || otherUser.username || 'Unknown user'}
+                              </p>
+                              <span className="text-[10px] text-slate-500">{conv.time || 'now'}</span>
+                            </div>
 
-                <div ref={messagesEndRef} />
-              </div>
+                            <div className="mt-0.5 flex items-center justify-between gap-2">
+                              <p className="truncate text-[11px] text-slate-400">@{otherUser.username || 'user'}</p>
+                              {conv.isUnread && (
+                                <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] text-slate-900">
+                                  New
+                                </span>
+                              )}
+                            </div>
 
-              {/* Accept Request Banner */}
-              {!selectedConversation.isAccepted && activeTab === 'requests' && (
-                <div className="border-t border-slate-800 bg-slate-800/50 p-4">
-                  <button
-                    onClick={handleAcceptRequest}
-                    className="w-full rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-500"
-                  >
-                    Accept Message Request
-                  </button>
+                            {conv.lastMessage && (
+                              <p className={`mt-1 truncate text-xs ${conv.isUnread ? 'text-slate-300' : 'text-slate-500'}`}>
+                                {conv.lastMessage}
+                              </p>
+                            )}
+
+                            {conv.inboxType === 'requests' && (
+                              <div className="mt-1 inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] text-amber-200">
+                                Request
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
-
-              {/* Message Input */}
-              <form onSubmit={handleSendMessage} className="border-t border-slate-800 bg-slate-900/80 p-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={messageText}
-                    onChange={handleTyping}
-                    placeholder="Type a message..."
-                    className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-violet-500 focus:outline-none"
-                  />
-                  <button type="submit" disabled={!messageText.trim()} className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50">
-                    Send
-                  </button>
-                </div>
-              </form>
-            </>
-          ) : (
-            <div className="flex items-center justify-center h-full text-slate-400 text-center">
-              <div>
-                <div className="text-4xl mb-3">💭</div>
-                <p className="text-sm">Select a conversation to start messaging</p>
-              </div>
             </div>
-          )}
+          </aside>
+
+          <main className={`${showMobileChat ? 'flex' : 'hidden'} h-full min-h-0 flex-col overflow-hidden border-y border-slate-800/80 bg-slate-950/60 lg:flex lg:rounded-2xl lg:border`}>
+            {selectedConversation || directMessageTarget ? (
+              <>
+                <header className="flex items-center justify-between border-b border-slate-800/80 bg-slate-950/80 px-3 py-2.5 pt-[max(0.7rem,env(safe-area-inset-top))] sm:px-4">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleCloseConversation}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-base text-slate-200 lg:hidden"
+                      aria-label="Back to inbox"
+                    >
+                      ←
+                    </button>
+                    <div className="relative h-10 w-10 overflow-hidden rounded-full bg-slate-700 ring-1 ring-slate-800">
+                      {(selectedConversation?.otherUser || directMessageTarget)?.profilePictureUrl ? (
+                        <img src={(selectedConversation?.otherUser || directMessageTarget).profilePictureUrl} alt={(selectedConversation?.otherUser || directMessageTarget).name} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center text-xs font-semibold text-white">
+                          {((selectedConversation?.otherUser || directMessageTarget)?.username || 'U').slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">{(selectedConversation?.otherUser || directMessageTarget)?.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[11px] text-slate-400">@{(selectedConversation?.otherUser || directMessageTarget)?.username}</p>
+                        {(selectedConversation?.otherUser || directMessageTarget)?.accountType === 'comedian' && (
+                          <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.08em] text-slate-200">
+                            Comedian
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button className="rounded-full border border-slate-700 bg-slate-900 p-2 text-slate-300 transition hover:text-white" title="More actions">
+                    ⋯
+                  </button>
+                </header>
+
+                <div className="no-scrollbar flex-1 overflow-y-auto bg-slate-950/40 p-3 pb-4 sm:p-4 sm:pb-5">
+                  {chatLoading ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-10 animate-pulse rounded-2xl bg-slate-800/70" />
+                      ))}
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-5 py-6 text-center">
+                        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-800 text-xl">💬</div>
+                        <p className="text-sm font-medium text-white">Start the conversation</p>
+                        <p className="mt-1 text-xs text-slate-400">Send a message to begin the thread.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {messages.map((msg) => (
+                        <div key={msg._id} className={`flex ${msg.senderId === sessionUser.id ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[82%] rounded-2xl px-3 py-2.5 ${msg.senderId === sessionUser.id ? 'bg-slate-200 text-slate-950' : 'border border-slate-800 bg-slate-900 text-slate-100'}`}>
+                            {msg.text && <p className="text-sm leading-6 break-words">{msg.text}</p>}
+                            <div className={`mt-1 flex items-center justify-between gap-2 text-[10px] ${msg.senderId === sessionUser.id ? 'text-slate-600' : 'text-slate-400'}`}>
+                              <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              {msg.senderId === sessionUser.id && msg.isRead && <span>✓✓</span>}
+                            </div>
+                            <MessageReactions message={msg} onAddReaction={handleAddReaction} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {Object.values(typingUsers).some((v) => v) && (
+                    <div className="mt-4 flex items-center gap-2 text-sm text-slate-400">
+                      <div className="flex gap-1">
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-500" style={{ animationDelay: '0ms' }} />
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-500" style={{ animationDelay: '150ms' }} />
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-500" style={{ animationDelay: '300ms' }} />
+                      </div>
+                      <span>typing...</span>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {selectedConversation && !selectedConversation.isAccepted && activeTab === 'requests' && (
+                  <div className="border-t border-slate-800 bg-slate-900/80 p-3">
+                    <button
+                      onClick={handleAcceptRequest}
+                      className="w-full rounded-xl bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-900 transition hover:bg-white"
+                    >
+                      Accept message request
+                    </button>
+                  </div>
+                )}
+
+                {selectedConversation?.isUnread && (
+                  <div className="border-b border-slate-800 bg-slate-900/80 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-300">
+                    New message
+                  </div>
+                )}
+
+                <form onSubmit={handleSendMessage} className="flex-shrink-0 border-t border-slate-800 bg-slate-950/80 p-3 pb-[max(0.8rem,calc(env(safe-area-inset-bottom)+0.5rem))] sm:p-4 sm:pb-[max(1rem,calc(env(safe-area-inset-bottom)+0.75rem))]">
+                  <div className="flex w-full items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-2 py-1.5 shadow-[0_-8px_20px_rgba(15,23,42,0.2)]">
+                    <button type="button" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-800 text-lg text-slate-300 transition hover:bg-slate-700 hover:text-white" aria-label="Add attachment">
+                      +
+                    </button>
+                    <input
+                      type="text"
+                      value={messageText}
+                      onChange={handleTyping}
+                      placeholder={((selectedConversation?.otherUser || directMessageTarget)?.username) ? `Message @${(selectedConversation?.otherUser || directMessageTarget).username}` : 'Type a message...'}
+                      className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!messageText.trim()}
+                      className="shrink-0 rounded-full bg-slate-200 px-3.5 py-2 text-sm font-medium text-slate-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Send
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <div className="flex h-full items-center justify-center text-center">
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-5 py-6">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-800 text-xl">✦</div>
+                  <p className="text-sm font-medium text-white">Choose a conversation</p>
+                  <p className="mt-1 text-xs text-slate-400">Your messages will appear here.</p>
+                </div>
+              </div>
+            )}
+          </main>
         </div>
       </div>
     </DashboardShell>

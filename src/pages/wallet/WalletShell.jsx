@@ -34,6 +34,7 @@ export default function WalletShell() {
   const [funding, setFunding] = useState(false);
   const [fundMessage, setFundMessage] = useState('');
   const [showFundingModal, setShowFundingModal] = useState(false);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
 
   useEffect(() => {
     getWalletSummary()
@@ -45,13 +46,18 @@ export default function WalletShell() {
   useEffect(() => {
     const reference = searchParams.get('reference') || searchParams.get('trxref');
     if (!reference) return;
+    setVerifyingPayment(true);
+    setFundMessage('Confirming your payment...');
     verifyWalletFunding(reference)
       .then((data) => {
         setWallet(data.wallet);
         setFundMessage(data.message);
       })
       .catch((error) => setFundMessage(error?.response?.data?.message || 'Payment verification failed.'))
-      .finally(() => setSearchParams({}, { replace: true }));
+      .finally(() => {
+        setVerifyingPayment(false);
+        setSearchParams({}, { replace: true });
+      });
   }, [searchParams, setSearchParams]);
 
   const handleAddFunds = async (event) => {
@@ -110,7 +116,7 @@ export default function WalletShell() {
             </div>
             <button type="button" onClick={() => { setFundMessage(''); setShowFundingModal(true); }} className="rounded-lg bg-rose-500 px-5 py-2.5 text-sm font-bold text-white shadow-[0_10px_30px_-14px_rgba(244,63,94,0.9)] transition hover:bg-rose-400">Add funds</button>
           </div>
-          {fundMessage ? <p className={`mt-3 text-sm ${fundMessage.includes('successfully') ? 'text-emerald-300' : 'text-rose-300'}`}>{fundMessage}</p> : null}
+          {fundMessage ? <p className={`mt-3 text-sm ${verifyingPayment ? 'text-slate-300' : fundMessage.includes('successfully') ? 'text-emerald-300' : 'text-rose-300'}`}>{fundMessage}</p> : null}
         </section>
 
         {showFundingModal ? (

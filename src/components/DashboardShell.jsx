@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import messageApi from '../api/messageApi';
 import screenLogo from '../assets/animations/screen.png';
 
 const navItems = [
@@ -101,10 +102,32 @@ export default function DashboardShell({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [messageUnreadCount, setMessageUnreadCount] = useState(0);
   const isHome = location.pathname === '/' || location.pathname === '/home';
   const isProfileRoute = location.pathname === '/profile' || location.pathname.startsWith('/profile/');
   const isSettingsRoute = location.pathname === '/settings';
   const isProfileToolbarRoute = isProfileRoute || isSettingsRoute;
+
+  useEffect(() => {
+    let ignore = false;
+
+    const refreshMessageCount = async () => {
+      try {
+        const data = await messageApi.getUnreadCount();
+        if (!ignore) setMessageUnreadCount(Number(data?.unreadCount || 0));
+      } catch {
+        if (!ignore) setMessageUnreadCount(0);
+      }
+    };
+
+    refreshMessageCount();
+    const timer = window.setInterval(refreshMessageCount, 30000);
+
+    return () => {
+      ignore = true;
+      window.clearInterval(timer);
+    };
+  }, [location.pathname]);
 
   const handleKeyDown = (event) => {
     if (typeof onSearchKeyDown === 'function') {
@@ -236,6 +259,11 @@ export default function DashboardShell({
                       <Icon name={item.icon} className="h-5 w-5 transition-transform group-active:scale-90" />
                     </span>
                     <span className="truncate leading-4">{item.label}</span>
+                    {item.path === '/messages' && messageUnreadCount > 0 && (
+                      <span className="absolute -right-1 top-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] font-bold text-white ring-2 ring-slate-950">
+                        {messageUnreadCount > 9 ? '9+' : messageUnreadCount}
+                      </span>
+                    )}
                     <span className={`absolute bottom-0 h-0.5 rounded-full bg-rose-300 transition-all duration-200 sm:hidden ${isActive ? 'w-5 opacity-100' : 'w-0 opacity-0'}`} />
                   </>
                 )}

@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import DashboardShell from '../components/DashboardShell';
 import { getProfileSummary, getProfilePosts, getProfileReshares } from '../api/dashboardApi';
 import ProfileHeader from '../components/profile/ProfileHeader';
@@ -43,6 +43,7 @@ const getSessionProfile = () => {
 
 function ProfilePage() {
   const { username: routeUsername } = useParams();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(() => getSessionProfile());
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState({ posts: [], reshared: [] });
@@ -52,6 +53,9 @@ function ProfilePage() {
   const [contentRequestKey, setContentRequestKey] = useState(0);
   const [activeTab, setActiveTab] = useState('posts');
   const [showComedyOnboarding, setShowComedyOnboarding] = useState(false);
+
+  const canMessage = !profile.relationship?.isOwnProfile && Boolean(profile.user?.id);
+  const messageLabel = profile.relationship?.isFollowing || profile.relationship?.isFollowedBy ? 'Message' : 'Request to message';
 
   useEffect(() => {
     const sessionUser = (() => {
@@ -130,6 +134,11 @@ function ProfilePage() {
     setShowComedyOnboarding(false);
   };
 
+  const handleMessage = () => {
+    if (!profile.user?.username) return;
+    navigate(`/messages?user=${encodeURIComponent(profile.user.username)}`);
+  };
+
   const handleShare = async () => {
     const url = window.location.href;
     const safeName = profile?.user?.name || 'Ochi Creator';
@@ -167,7 +176,16 @@ function ProfilePage() {
                 {profileError}
               </div>
             ) : null}
-            <ProfileHeader user={profile.user} relationship={profile.relationship} onFollowChange={handleFollowChange} onShare={handleShare} onTryComedy={() => setShowComedyOnboarding(true)} />
+            <ProfileHeader
+              user={profile.user}
+              relationship={profile.relationship}
+              onFollowChange={handleFollowChange}
+              onShare={handleShare}
+              onTryComedy={() => setShowComedyOnboarding(true)}
+              onMessage={handleMessage}
+              canMessage={canMessage}
+              messageLabel={messageLabel}
+            />
             <StatsBar stats={profile.stats} onSelect={handleStatSelect} />
             <TabsSection activeTab={activeTab} onChange={setActiveTab} />
             {activeTab === 'about' ? (

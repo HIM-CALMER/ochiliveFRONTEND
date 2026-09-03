@@ -1,6 +1,6 @@
 import FollowButton from './FollowButton';
 
-function ProfileHeader({ user, relationship, onFollowChange, onShare, onTryComedy }) {
+function ProfileHeader({ user, relationship, onFollowChange, onShare, onTryComedy, onMessage, canMessage, messageLabel }) {
   const name = user?.name || 'Ochi Creator';
   const username = user?.username || 'creator';
   const initials = name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
@@ -36,6 +36,15 @@ function ProfileHeader({ user, relationship, onFollowChange, onShare, onTryComed
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {!relationship?.isOwnProfile && (
+              <button
+                type="button"
+                onClick={onMessage}
+                className={`border px-4 py-2.5 text-sm font-semibold transition ${canMessage ? 'border-violet-500 bg-violet-600 text-white hover:bg-violet-500' : 'border-slate-700 bg-slate-900 text-slate-200 hover:border-slate-500 hover:bg-slate-800'}`}
+              >
+                {messageLabel || 'Message'}
+              </button>
+            )}
             <FollowButton username={username} relationship={{ ...relationship, accountType: user?.accountType }} onChange={onFollowChange} onTryComedy={onTryComedy} />
             <button type="button" onClick={onShare} className="border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800">Share</button>
           </div>

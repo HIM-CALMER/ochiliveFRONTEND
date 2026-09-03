@@ -103,11 +103,16 @@ html, body, #root {
   text-rendering: optimizeLegibility;
 }
 
+html, body {
+  overscroll-behavior: none;
+}
+
 body {
   line-height: 1.5;
   overscroll-behavior-y: none;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
@@ -198,6 +203,18 @@ textarea {
     opacity: 0;
     transform: translateY(-10px);
   }
+}
+
+/* Global scrollbar removal for a cleaner premium UI */
+* {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
 }
 
 /* Helpers */
