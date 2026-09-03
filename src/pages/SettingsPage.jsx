@@ -69,6 +69,19 @@ const sections = [
       { key: 'language', label: 'Language', description: 'English (default)', action: 'Change' },
     ],
   },
+  {
+    id: 'billing',
+    label: 'Billing & Wallet',
+    description: 'Manage your revenue, withdrawals, and earnings.',
+    accent: 'from-emerald-500/25 via-emerald-500/10 to-transparent',
+    icon: 'wallet',
+    controls: [
+      { key: 'walletOverview', label: 'Wallet overview', description: 'View your current balance', action: 'Go to Wallet', path: '/wallet' },
+      { key: 'walletRevenue', label: 'Revenue', description: 'Track your earnings and performance', action: 'View', path: '/wallet/revenue' },
+      { key: 'walletTransactions', label: 'Transactions', description: 'History of all payments and transfers', action: 'View', path: '/wallet/transactions' },
+      { key: 'walletWithdrawals', label: 'Withdrawals', description: 'Manage your payout methods', action: 'View', path: '/wallet/withdrawals' },
+    ],
+  },
 ];
 
 const iconMap = {
@@ -99,6 +112,13 @@ const iconMap = {
   sparkles: (
     <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
       <path d="M12 2.8 13.7 7l4.3 1.7-4.3 1.7L12 15l-1.7-4.6L6 8.7 10.3 7 12 2.8Zm6.5 11.2 1 2.8 2.8 1-2.8 1-1 2.8-1-2.8-2.8-1 2.8-1 1-2.8ZM5 13.2l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9.9-2.3Z" fill="currentColor" />
+    </svg>
+  ),
+  wallet: (
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+      <path d="M5 7.5h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M6 11h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M15 11h2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   ),
 };
@@ -284,6 +304,8 @@ function SettingsPage() {
                           onClick={() => {
                             if (control.key === 'username' || control.key === 'bio' || control.key === 'password') {
                               setEditingProfile(true);
+                            } else if (control.path) {
+                              navigate(control.path);
                             }
                           }}
                           className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-[9px] uppercase tracking-[0.16em] text-slate-200 transition hover:border-slate-500 hover:text-white"

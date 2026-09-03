@@ -6,7 +6,7 @@ const navItems = [
   { label: 'Home', path: '/home', icon: 'home' },
   { label: 'Discover', path: '/discover', icon: 'search' },
   { label: 'Activity', path: '/activity', icon: 'activity' },
-  { label: 'Wallet', path: '/wallet', icon: 'wallet' },
+  { label: 'Messages', path: '/messages', icon: 'message' },
   { label: 'Profile', path: '/profile', icon: 'user' },
 ];
 
@@ -65,6 +65,12 @@ function Icon({ name, className }) {
           <path d="M5 7.5h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" />
           <path d="M6 11h3" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
           <path d="M15 11h2" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        </svg>
+      );
+    case 'message':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case 'bell':
@@ -209,7 +215,7 @@ export default function DashboardShell({
               home: 'text-amber-400',
               search: 'text-rose-300',
               upload: 'text-amber-400',
-              wallet: 'text-emerald-300',
+              message: 'text-violet-300',
               user: 'text-sky-300',
               activity: 'text-slate-400',
             };

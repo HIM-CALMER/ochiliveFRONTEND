@@ -18,6 +18,7 @@ import WalletWithdrawals from '../pages/wallet/WalletWithdrawals';
 import ProfilePage from '../pages/ProfilePage';
 import UploadPage from '../pages/UploadPage';
 import NotificationsPage from '../pages/NotificationsPage';
+import MessagesPage from '../pages/MessagesPage';
 import SettingsPage from '../pages/SettingsPage';
 import ProtectedRoute from './ProtectedRoute';
 
@@ -34,6 +35,7 @@ function AppRoutes() {
       <Route path="/discover/more-upcoming-shows" element={<MoreUpcomingShowsPage />} />
       <Route path="/discover/more-popular-clips" element={<MorePopularClipsPage />} />
       <Route path="/activity" element={<ActivityPage />} />
+      <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
       <Route path="/wallet" element={<ProtectedRoute><WalletShell /></ProtectedRoute>} />
       <Route path="/wallet/overview" element={<ProtectedRoute><WalletOverview /></ProtectedRoute>} />
       <Route path="/wallet/revenue" element={<ProtectedRoute><WalletRevenue /></ProtectedRoute>} />
