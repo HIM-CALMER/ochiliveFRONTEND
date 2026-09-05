@@ -183,6 +183,7 @@ function UploadPage() {
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState(0);
   const [comedian, setComedian] = useState(false);
+  const [comedianProfile, setComedianProfile] = useState(null);
   const [liveStarting, setLiveStarting] = useState(false);
   const [liveRoomId, setLiveRoomId] = useState('');
   const [liveTitle, setLiveTitle] = useState('');
@@ -191,7 +192,13 @@ function UploadPage() {
   const [liveVisibility, setLiveVisibility] = useState('public');
 
   useEffect(() => {
-    getProfileSummary().then((profile) => setComedian(profile.user?.accountType === 'comedian')).catch(() => setComedian(false));
+    getProfileSummary().then((profile) => {
+      setComedian(profile.user?.accountType === 'comedian');
+      setComedianProfile(profile.user?.comedyProfile || null);
+    }).catch(() => {
+      setComedian(false);
+      setComedianProfile(null);
+    });
   }, []);
 
   useEffect(() => {
@@ -528,7 +535,7 @@ function UploadPage() {
           </button>
 
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.34em] text-slate-500">{comedian ? 'Comedian Studio' : 'Creator Studio'}</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.34em] text-slate-500">{comedian ? `Comedian Studio · Level ${comedianProfile?.level || 1} ${comedianProfile?.levelName || 'Rookie'}` : 'Creator Studio'}</p>
             <h1 className="truncate text-sm font-semibold tracking-tight text-white">{screen === 'live' ? 'Prepare a live room' : 'Create a post'}</h1>
           </div>
 
@@ -898,6 +905,11 @@ function UploadPage() {
                     <p className="mt-1.5 text-sm leading-relaxed text-slate-400">
                       Give your audience a reason to join before you start.
                     </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 p-3 text-xs text-amber-100">
+                    <div><p className="uppercase tracking-[0.16em] text-amber-200/70">Rookie limit</p><p className="mt-1 font-semibold">{comedianProfile?.maxStreamMinutes || 5} min max</p></div>
+                    <div><p className="uppercase tracking-[0.16em] text-amber-200/70">This month</p><p className="mt-1 font-semibold">Up to {comedianProfile?.monthlyStreamLimit || 4} streams</p></div>
+                    <p className="col-span-2 border-t border-amber-200/10 pt-2 text-amber-100/80">Ticketed shows are unavailable at Level 1. Your shows must be free.</p>
                   </div>
                   <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
                     Room title

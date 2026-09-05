@@ -4,7 +4,9 @@ function ProfileHeader({ user, relationship, onFollowChange, onShare, onTryComed
   const name = user?.name || 'Ochi Creator';
   const username = user?.username || 'creator';
   const initials = name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
-  const accountLabel = user?.accountType === 'comedian' ? 'Comedian' : user?.tier || 'Creator';
+  const accountLabel = user?.accountType === 'comedian'
+    ? `Level ${user.comedyProfile?.level || 1} · ${user.comedyProfile?.levelName || 'Rookie'}`
+    : user?.tier || 'Creator';
   const statusLabel = relationship?.isMutual ? 'Mutual' : relationship?.isFollowing && relationship?.isFollowedBy ? 'Follow back' : relationship?.isFollowing ? 'Following' : relationship?.isFollowedBy ? 'Follow back' : 'Public profile';
   const statusClasses = relationship?.isMutual
     ? 'border-violet-400/30 bg-violet-500/10 text-violet-200'

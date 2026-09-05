@@ -7,6 +7,7 @@ import StatsBar from '../components/profile/StatsBar';
 import TabsSection from '../components/profile/TabsSection';
 import ContentGrid from '../components/profile/ContentGrid';
 import ComedyOnboarding from '../components/profile/ComedyOnboarding';
+import ComedianPerformanceCard from '../components/profile/ComedianPerformanceCard';
 
 const fallbackProfile = {
   user: {
@@ -186,6 +187,7 @@ function ProfilePage() {
               canMessage={canMessage}
               messageLabel={messageLabel}
             />
+            {profile.user?.accountType === 'comedian' ? <ComedianPerformanceCard comedyProfile={profile.user.comedyProfile} /> : null}
             <StatsBar stats={profile.stats} onSelect={handleStatSelect} />
             <TabsSection activeTab={activeTab} onChange={setActiveTab} />
             {activeTab === 'about' ? (
