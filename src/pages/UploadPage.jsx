@@ -194,20 +194,30 @@ function UploadPage() {
   const [liveVisibility, setLiveVisibility] = useState('public');
 
   useEffect(() => {
+    let sessionUser = null;
+    try {
+      sessionUser = JSON.parse(sessionStorage.getItem('ochi_user') || 'null');
+    } catch {
+      sessionUser = null;
+    }
+
     getProfileSummary().then((profile) => {
-      setComedian(profile.user?.accountType === 'comedian');
-      setComedianProfile(profile.user?.comedyProfile || null);
+      const user = profile.user || {};
+      const accountType = user.accountType || sessionUser?.accountType || 'creator';
+      const comedyProfile = user.comedyProfile || sessionUser?.comedyProfile || null;
+      setComedian(accountType === 'comedian');
+      setComedianProfile(comedyProfile);
     }).catch(() => {
-      setComedian(false);
-      setComedianProfile(null);
+      setComedian(sessionUser?.accountType === 'comedian');
+      setComedianProfile(sessionUser?.comedyProfile || null);
     });
   }, []);
 
   useEffect(() => {
-    if (comedian && searchParams.get('mode') === 'live') {
+    if (searchParams.get('mode') === 'live') {
       setActiveTab('live');
       setScreen('live');
-      setStatus('Live setup ready.');
+      setStatus(comedian ? 'Live setup ready.' : 'Complete comedian onboarding to unlock live setup.');
     }
   }, [comedian, searchParams]);
 
@@ -332,7 +342,7 @@ function UploadPage() {
       setLiveRoomId(result.room.id);
       setStatus('Room ready. Check your setup, then start live.');
     } catch (error) {
-      setStatus(error?.response?.data?.message || 'Unable to prepare the live room.');
+      setStatus(error?.response?.data?.message || 'Unable to prepare the live room. Please try signing in again.');
     } finally {
       setLiveStarting(false);
     }
@@ -632,8 +642,6 @@ function UploadPage() {
           </button>
         </header>
 
-        {!comedian ? <div className="relative z-10 mx-4 mt-3 border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100 sm:mx-6"><span className="font-semibold">Live access is locked.</span> Complete Try Comedy on your profile to perform live. <button type="button" onClick={() => navigate('/profile')} className="ml-1 font-semibold underline">Open profile</button></div> : null}
-
         {/* upload progress rail */}
         <div className="relative z-10 h-0.5 w-full shrink-0 bg-white/5">
           <div
@@ -783,7 +791,7 @@ function UploadPage() {
           </section>
 
           {/* Controls / details */}
-          <section className="up-scroll pointer-events-none absolute inset-x-0 bottom-0 z-20 max-h-[34dvh] min-h-0 overflow-y-auto rounded-t-2xl border-t border-white/15 bg-transparent px-3 pb-[calc(.65rem+env(safe-area-inset-bottom))] pt-2 sm:px-6 lg:relative lg:inset-auto lg:max-h-none lg:w-[380px] lg:flex-none lg:rounded-[28px] lg:border lg:px-5 lg:py-5 lg:shadow-none">
+          <section className={`up-scroll pointer-events-none absolute inset-x-0 bottom-0 z-20 min-h-0 overflow-y-auto rounded-t-2xl border-t border-white/15 bg-slate-950/95 px-3 pb-[calc(.65rem+env(safe-area-inset-bottom))] pt-2 sm:px-6 lg:relative lg:inset-auto lg:max-h-none lg:w-[380px] lg:flex-none lg:rounded-[28px] lg:border lg:bg-transparent lg:px-5 lg:py-5 lg:shadow-none ${screen === 'live' ? 'max-h-[72dvh]' : 'max-h-[44dvh]'}`}>
             {/* mobile mode switcher */}
             <div
               role="tablist"
@@ -940,9 +948,16 @@ function UploadPage() {
                   <div>
                     <p className="text-sm font-semibold text-white">Live room setup</p>
                     <p className="mt-1.5 text-sm leading-relaxed text-slate-400">
-                      Give your audience a reason to join before you start.
+                      {comedian ? 'Give your audience a reason to join before you start.' : 'Complete comedian onboarding before starting a live room.'}
                     </p>
                   </div>
+                  {!comedian ? (
+                    <button type="button" onClick={() => navigate('/profile')} className="inline-flex w-full items-center justify-center rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-100 hover:bg-amber-400/15">
+                      Open comedian onboarding
+                    </button>
+                  ) : null}
+                  {comedian ? (
+                    <>
                   <div className="grid grid-cols-2 gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 p-3 text-xs text-amber-100">
                     <div><p className="uppercase tracking-[0.16em] text-amber-200/70">Rookie limit</p><p className="mt-1 font-semibold">{comedianProfile?.maxStreamMinutes || 5} min max</p></div>
                     <div><p className="uppercase tracking-[0.16em] text-amber-200/70">This month</p><p className="mt-1 font-semibold">Up to {comedianProfile?.monthlyStreamLimit || 4} streams</p></div>
@@ -989,6 +1004,8 @@ function UploadPage() {
                       {liveStarting ? (liveRoomId ? 'Starting room...' : 'Preparing room...') : liveRoomId ? 'Start live room' : 'Prepare live room'}
                     </button>
                   )}
+                    </>
+                  ) : null}
                 </div>
               ) : screen === 'gallery' ? (
                 <div key="p-gallery" className="up-rise space-y-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4">

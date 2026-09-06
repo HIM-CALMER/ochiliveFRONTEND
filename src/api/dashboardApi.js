@@ -32,6 +32,20 @@ const authInterceptor = (config) => {
 api.interceptors.request.use(authInterceptor);
 videoApi.interceptors.request.use(authInterceptor);
 
+const handleAuthFailure = (error) => {
+  if (error?.response?.status === 401 && error?.response?.data?.code === 'SESSION_ACCOUNT_NOT_FOUND') {
+    sessionStorage.removeItem('ochi_token');
+    sessionStorage.removeItem('ochi_user');
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      window.location.assign('/login?reason=session-expired');
+    }
+  }
+  return Promise.reject(error);
+};
+
+api.interceptors.response.use((response) => response, handleAuthFailure);
+videoApi.interceptors.response.use((response) => response, handleAuthFailure);
+
 export const getDashboardSummary = async () => {
   const { data } = await api.get('/dashboard/summary');
   return data;
