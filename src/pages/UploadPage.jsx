@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardShell from '../components/DashboardShell';
-import { createLiveRoom, getProfileSummary, startLiveRoom, uploadVideoPost, uploadVideoFile } from '../api/dashboardApi';
+import { createLiveRoom, endLiveRoom, getProfileSummary, startLiveRoom, uploadVideoPost, uploadVideoFile } from '../api/dashboardApi';
 
 /* ---------------------------------------------------------------
    Iconography — thin, consistent 24px line system
@@ -138,7 +138,6 @@ const options = [
   { key: 'video', label: 'Video', hint: 'Record', Glyph: VideoIcon },
   { key: 'photo', label: 'Photo', hint: 'Capture', Glyph: PhotoIcon },
   { key: 'gallery', label: 'Gallery', hint: 'Upload', Glyph: GalleryIcon },
-  { key: 'live', label: 'Live', hint: 'Stream', Glyph: LiveIcon },
 ];
 
 const privacyOptions = [
@@ -158,6 +157,7 @@ const blobToDataUrl = (blob) =>
 
 function UploadPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const videoRef = useRef(null);
   const previewVideoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -186,6 +186,8 @@ function UploadPage() {
   const [comedianProfile, setComedianProfile] = useState(null);
   const [liveStarting, setLiveStarting] = useState(false);
   const [liveRoomId, setLiveRoomId] = useState('');
+  const [liveStarted, setLiveStarted] = useState(false);
+  const [liveElapsed, setLiveElapsed] = useState(0);
   const [liveTitle, setLiveTitle] = useState('');
   const [liveDescription, setLiveDescription] = useState('');
   const [liveFormat, setLiveFormat] = useState('standup');
@@ -202,17 +204,41 @@ function UploadPage() {
   }, []);
 
   useEffect(() => {
+    if (comedian && searchParams.get('mode') === 'live') {
+      setActiveTab('live');
+      setScreen('live');
+      setStatus('Live setup ready.');
+    }
+  }, [comedian, searchParams]);
+
+  useEffect(() => {
     if (!stream || !videoRef.current) return;
     videoRef.current.srcObject = stream;
     videoRef.current.play().catch(() => {});
   }, [stream]);
 
   useEffect(() => {
-    if (screen === 'camera' && activeTab !== 'gallery' && activeTab !== 'live') {
-      openCamera(activeTab);
+    if ((screen === 'camera' || screen === 'live') && activeTab !== 'gallery') {
+      openCamera(activeTab === 'live' ? 'video' : activeTab);
     }
     return stopCamera;
   }, [screen, activeTab]);
+
+  useEffect(() => {
+    if (!liveStarted) {
+      setLiveElapsed(0);
+      return undefined;
+    }
+    const id = window.setInterval(() => setLiveElapsed((value) => value + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [liveStarted]);
+
+  useEffect(() => {
+    const maxSeconds = Number(comedianProfile?.maxStreamMinutes || 5) * 60;
+    if (!liveStarted || liveElapsed < maxSeconds) return undefined;
+    endPreparedLive();
+    return undefined;
+  }, [liveStarted, liveElapsed, comedianProfile?.maxStreamMinutes]);
 
   useEffect(() => {
     if (!recording) {
@@ -289,7 +315,6 @@ function UploadPage() {
       }
       setScreen('live');
       setStatus('Live ready.');
-      stopCamera();
       return;
     }
     setScreen('camera');
@@ -318,9 +343,25 @@ function UploadPage() {
     setLiveStarting(true);
     try {
       await startLiveRoom(liveRoomId);
-      setStatus('Live room started. Your audience can join now.');
+      setLiveStarted(true);
+      setStatus('You are live. Your audience can join now.');
     } catch (error) {
       setStatus(error?.response?.data?.message || 'Unable to start the live room.');
+    } finally {
+      setLiveStarting(false);
+    }
+  };
+
+  const endPreparedLive = async () => {
+    if (!liveRoomId) return;
+    setLiveStarting(true);
+    try {
+      const result = await endLiveRoom(liveRoomId);
+      setLiveStarted(false);
+      stopCamera();
+      setStatus(`${result.message} ${result.durationMinutes} minute${result.durationMinutes === 1 ? '' : 's'} recorded.`);
+    } catch (error) {
+      setStatus(error?.response?.data?.message || 'Unable to end the live room.');
     } finally {
       setLiveStarting(false);
     }
@@ -647,7 +688,7 @@ function UploadPage() {
               dragging ? 'lg:border-rose-400/60 lg:ring-2 lg:ring-rose-400/30' : 'lg:border-white/10'
             }`}
           >
-            {screen === 'camera' && (
+            {(screen === 'camera' || screen === 'live') && (
               <video key="cam" ref={videoRef} className={`up-stage-in h-full w-full object-cover ${cameraFacing === 'user' ? '-scale-x-100' : ''}`} muted playsInline autoPlay />
             )}
 
@@ -666,19 +707,15 @@ function UploadPage() {
               ))}
 
             {screen === 'live' && (
-              <div key="live" className="up-stage-in flex h-full items-center justify-center bg-slate-950 px-6 text-center">
-                <div className="space-y-5">
-                  <div className="relative mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full border border-rose-400/30 bg-rose-500/10 text-rose-300">
-                    <span className="up-ring absolute inset-0 rounded-full border border-rose-400/40" />
-                    <LiveIcon className="h-8 w-8" />
-                  </div>
-                  <div className="space-y-2">
-                    <h2 className="text-2xl font-semibold tracking-tight">Go Live</h2>
-                    <p className="mx-auto max-w-xs text-sm leading-relaxed text-slate-400">
-                      Broadcast in real time to your audience.
-                    </p>
-                  </div>
+              <div key="live" className="pointer-events-none absolute inset-0">
+                <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-4 pb-10 pt-4">
+                  <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${liveStarted ? 'bg-rose-500 text-white' : 'border border-white/15 bg-black/45 text-slate-200'}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${liveStarted ? 'animate-pulse bg-white' : 'bg-amber-300'}`} />
+                    {liveStarted ? 'Live now' : cameraLoading ? 'Checking camera' : 'Preview'}
+                  </span>
+                  {liveStarted ? <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-semibold tabular-nums text-white">{Math.floor(liveElapsed / 60).toString().padStart(2, '0')}:{(liveElapsed % 60).toString().padStart(2, '0')} / {comedianProfile?.maxStreamMinutes || 5}:00</span> : null}
                 </div>
+                {!stream && !cameraLoading ? <div className="absolute inset-0 flex items-center justify-center bg-slate-950/90 px-6 text-center"><div><p className="text-sm font-semibold text-white">Camera preview unavailable</p><p className="mt-2 text-xs text-slate-400">Allow camera and microphone access to continue.</p></div></div> : null}
               </div>
             )}
 
@@ -924,28 +961,34 @@ function UploadPage() {
                     <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Audience<select value={liveVisibility} onChange={(event) => setLiveVisibility(event.target.value)} className="mt-2 w-full border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none"><option value="public">Everyone</option><option value="followers">Followers</option><option value="private">Only me</option></select></label>
                   </div>
                   <ul className="space-y-2">
-                    {['Camera', 'Microphone', 'Network'].map((item, i) => (
+                    {[
+                      { label: 'Camera', ready: Boolean(stream), pending: cameraLoading },
+                      { label: 'Microphone', ready: Boolean(stream?.getAudioTracks?.().length), pending: cameraLoading },
+                      { label: 'Network', ready: true, pending: false },
+                    ].map((item, i) => (
                       <li
-                        key={item}
+                        key={item.label}
                         className={`up-rise up-d${i + 1} flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-300`}
                       >
-                        {item}
-                        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-300">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                          Ready
+                        {item.label}
+                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${item.pending ? 'text-amber-300' : item.ready ? 'text-emerald-300' : 'text-rose-300'}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${item.pending ? 'animate-pulse bg-amber-400' : item.ready ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                          {item.pending ? 'Checking' : item.ready ? 'Ready' : 'Required'}
                         </span>
                       </li>
                     ))}
                   </ul>
-                  <button
-                    type="button"
-                    disabled={liveStarting}
-                    onClick={startPreparedLive}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
-                  >
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
-                    {liveStarting ? (liveRoomId ? 'Starting room...' : 'Preparing room...') : liveRoomId ? 'Start live room' : 'Prepare live room'}
-                  </button>
+                  {liveStarted ? (
+                    <button type="button" disabled={liveStarting} onClick={endPreparedLive} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-200 px-5 py-3.5 text-sm font-semibold text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
+                      {liveStarting ? 'Ending live room...' : 'End live room'}
+                    </button>
+                  ) : (
+                    <button type="button" disabled={liveStarting || !stream || !liveTitle.trim()} onClick={startPreparedLive} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60 disabled:cursor-not-allowed disabled:opacity-50">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                      {liveStarting ? (liveRoomId ? 'Starting room...' : 'Preparing room...') : liveRoomId ? 'Start live room' : 'Prepare live room'}
+                    </button>
+                  )}
                 </div>
               ) : screen === 'gallery' ? (
                 <div key="p-gallery" className="up-rise space-y-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4">

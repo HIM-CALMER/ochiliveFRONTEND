@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import DashboardShell from '../components/DashboardShell';
-import { getProfileSummary, getProfilePosts, getProfileReshares } from '../api/dashboardApi';
+import { getProfileSummary, getProfilePosts, getProfileReshares, rateProfile } from '../api/dashboardApi';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import StatsBar from '../components/profile/StatsBar';
 import TabsSection from '../components/profile/TabsSection';
@@ -54,6 +54,8 @@ function ProfilePage() {
   const [contentRequestKey, setContentRequestKey] = useState(0);
   const [activeTab, setActiveTab] = useState('posts');
   const [showComedyOnboarding, setShowComedyOnboarding] = useState(false);
+  const [showPerformanceProfile, setShowPerformanceProfile] = useState(false);
+  const [ratingMessage, setRatingMessage] = useState('');
 
   const canMessage = !profile.relationship?.isOwnProfile && Boolean(profile.user?.id);
   const messageLabel = profile.relationship?.isFollowing || profile.relationship?.isFollowedBy ? 'Message' : 'Request to message';
@@ -140,6 +142,16 @@ function ProfilePage() {
     navigate(`/messages?user=${encodeURIComponent(profile.user.username)}`);
   };
 
+  const handleRate = async (score) => {
+    try {
+      const result = await rateProfile(profile.user.username, score);
+      setProfile((current) => ({ ...current, user: { ...current.user, comedyProfile: { ...current.user.comedyProfile, rating: result.rating, ratingCount: result.ratingCount } } }));
+      setRatingMessage('Rating saved.');
+    } catch (error) {
+      setRatingMessage(error?.response?.data?.message || 'Unable to save rating.');
+    }
+  };
+
   const handleShare = async () => {
     const url = window.location.href;
     const safeName = profile?.user?.name || 'Ochi Creator';
@@ -183,11 +195,24 @@ function ProfilePage() {
               onFollowChange={handleFollowChange}
               onShare={handleShare}
               onTryComedy={() => setShowComedyOnboarding(true)}
+              onGoLive={() => navigate('/upload?mode=live')}
               onMessage={handleMessage}
               canMessage={canMessage}
               messageLabel={messageLabel}
             />
-            {profile.user?.accountType === 'comedian' ? <ComedianPerformanceCard comedyProfile={profile.user.comedyProfile} /> : null}
+            {profile.user?.accountType === 'comedian' ? (
+              <>
+                <ComedianPerformanceCard
+                  comedyProfile={profile.user.comedyProfile}
+                  canRate={!profile.relationship?.isOwnProfile}
+                  onRate={handleRate}
+                  open={showPerformanceProfile}
+                  onOpen={() => setShowPerformanceProfile(true)}
+                  onClose={() => setShowPerformanceProfile(false)}
+                />
+                {ratingMessage ? <p className="mt-2 text-right text-xs text-slate-500" role="status">{ratingMessage}</p> : null}
+              </>
+            ) : null}
             <StatsBar stats={profile.stats} onSelect={handleStatSelect} />
             <TabsSection activeTab={activeTab} onChange={setActiveTab} />
             {activeTab === 'about' ? (

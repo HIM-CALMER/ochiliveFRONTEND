@@ -1,6 +1,6 @@
 import FollowButton from './FollowButton';
 
-function ProfileHeader({ user, relationship, onFollowChange, onShare, onTryComedy, onMessage, canMessage, messageLabel }) {
+function ProfileHeader({ user, relationship, onFollowChange, onShare, onTryComedy, onMessage, onGoLive, canMessage, messageLabel }) {
   const name = user?.name || 'Ochi Creator';
   const username = user?.username || 'creator';
   const initials = name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
@@ -38,6 +38,16 @@ function ProfileHeader({ user, relationship, onFollowChange, onShare, onTryComed
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {relationship?.isOwnProfile && user?.accountType === 'comedian' ? (
+              <button
+                type="button"
+                onClick={onGoLive}
+                className="inline-flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_-12px_rgba(244,63,94,0.9)] transition hover:bg-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/60"
+              >
+                <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                Go live
+              </button>
+            ) : null}
             {!relationship?.isOwnProfile && (
               <button
                 type="button"

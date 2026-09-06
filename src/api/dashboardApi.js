@@ -136,6 +136,11 @@ export const unfollowProfile = async (username) => {
   return data;
 };
 
+export const rateProfile = async (username, score) => {
+  const { data } = await api.post(`/profiles/${encodeURIComponent(username)}/rating`, { score });
+  return data;
+};
+
 export const updateProfile = async (payload) => {
   const { data } = await api.patch('/profile/me', payload);
   return data;
@@ -160,6 +165,11 @@ export const createLiveRoom = async (payload) => {
 
 export const startLiveRoom = async (id) => {
   const { data } = await videoApi.post(`/videos/live/rooms/${id}/start`);
+  return data;
+};
+
+export const endLiveRoom = async (id) => {
+  const { data } = await videoApi.post(`/videos/live/rooms/${id}/end`);
   return data;
 };
 
