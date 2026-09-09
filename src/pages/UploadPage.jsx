@@ -143,7 +143,7 @@ const options = [
 
 const privacyOptions = [
   { key: 'public', label: 'Everyone', Glyph: GlobeIcon },
-  { key: 'friends', label: 'Followers', Glyph: UsersIcon },
+  { key: 'followers', label: 'Followers', Glyph: UsersIcon },
   { key: 'private', label: 'Only me', Glyph: LockIcon },
 ];
 
@@ -569,7 +569,7 @@ function UploadPage() {
     try {
         let mediaUrlToSend = previewUrl;
         let thumbnailUrlToSend = previewUrl;
-        // If preview is a blob/data URL, upload the file first to get a persistent URL
+        // If preview is a blob/data URL, upload the file first to get a persistent URL.
         if (previewUrl.startsWith('blob:') || previewUrl.startsWith('data:')) {
           const blob = await (await fetch(previewUrl)).blob();
           const ext = (blob.type && blob.type.split('/')[1]) || 'webm';
@@ -577,8 +577,8 @@ function UploadPage() {
           const form = new FormData();
           form.append('file', file);
           const uploadResp = await uploadVideoFile(form);
-          mediaUrlToSend = uploadResp.url || mediaUrlToSend;
-          thumbnailUrlToSend = uploadResp.thumbnailUrl || mediaUrlToSend;
+          mediaUrlToSend = uploadResp.mediaUrl || uploadResp.url || mediaUrlToSend;
+          thumbnailUrlToSend = uploadResp.thumbnailUrl || uploadResp.mediaUrl || uploadResp.url || mediaUrlToSend;
         }
 
         await uploadVideoPost({
@@ -717,7 +717,7 @@ function UploadPage() {
             type="button"
             onClick={handlePublish}
             disabled={!canPost}
-            className="hidden shrink-0 items-center gap-2 rounded-full bg-rose-500 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-500 lg:inline-flex"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-rose-500 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-500"
           >
             {uploading ? (
               <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -896,7 +896,7 @@ function UploadPage() {
           </section>
 
           {/* Controls / details */}
-          <section className={`up-scroll pointer-events-none absolute inset-x-0 bottom-0 z-20 min-h-0 overflow-y-auto px-3 pb-[calc(.65rem+env(safe-area-inset-bottom))] pt-2 sm:px-6 lg:relative lg:inset-auto lg:max-h-none lg:w-[380px] lg:flex-none lg:rounded-[28px] lg:border lg:px-5 lg:py-5 lg:shadow-none ${liveStarted && screen === 'live' ? 'max-h-none bg-transparent' : `rounded-t-2xl border-t border-white/15 bg-slate-950/95 ${screen === 'live' ? 'max-h-[34dvh] sm:max-h-[42dvh]' : 'max-h-[44dvh]'}`} ${screen !== 'live' ? 'lg:bg-transparent' : ''}`}>
+          <section className={`up-scroll pointer-events-auto absolute inset-x-0 bottom-0 z-20 min-h-0 touch-manipulation overflow-y-auto overscroll-contain px-3 pb-[calc(.65rem+env(safe-area-inset-bottom))] pt-2 sm:px-6 lg:relative lg:inset-auto lg:max-h-none lg:w-[380px] lg:flex-none lg:rounded-[28px] lg:border lg:px-5 lg:py-5 lg:shadow-none ${liveStarted && screen === 'live' ? 'max-h-none bg-transparent' : `rounded-t-2xl border-t border-white/15 bg-slate-950/95 ${screen === 'live' ? 'max-h-[34dvh] sm:max-h-[42dvh]' : 'max-h-[44dvh]'}`} ${screen !== 'live' ? 'lg:bg-transparent' : ''}`}>
             {/* mobile mode switcher */}
             <div
               role="tablist"

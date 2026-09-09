@@ -75,8 +75,7 @@ export default function WalletShell() {
     setFunding(true);
     setFundMessage('');
     try {
-      const callbackUrl = `${window.location.origin}/wallet`;
-      const result = await initializeWalletFunding(Number(fundAmount), summary.currency, callbackUrl);
+      const result = await initializeWalletFunding(Number(fundAmount), summary.currency);
       window.location.assign(result.authorizationUrl);
     } catch (error) {
       setFundMessage(error?.response?.data?.message || 'Unable to start payment.');

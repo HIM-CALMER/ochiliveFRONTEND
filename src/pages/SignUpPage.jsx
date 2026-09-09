@@ -135,8 +135,19 @@ function SignUpPage() {
 
     try {
       const response = await axios.post(buildApiUrl('/auth/register'), form);
-      setPendingEmail(response.data.email || form.email);
-      setMessage(response.data.message || 'Verification code sent.');
+      const data = response?.data || {};
+      setPendingEmail(data.email || form.email);
+
+      if (data.otp) {
+        setOtpCode(data.otp);
+      }
+
+      if (data.emailDeliveryFailed && data.otp) {
+        setMessage(`${data.message || 'Verification code sent.'} Use the code on screen: ${data.otp}`);
+      } else {
+        setMessage(data.message || 'Verification code sent.');
+      }
+
       setLoading(false);
     } catch (error) {
       const status = error?.response?.status;
