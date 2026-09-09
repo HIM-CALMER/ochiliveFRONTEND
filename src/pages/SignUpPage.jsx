@@ -136,23 +136,30 @@ function SignUpPage() {
     try {
       const response = await axios.post(buildApiUrl('/auth/register'), form);
       const data = response?.data || {};
-      setPendingEmail(data.email || form.email);
 
       if (data.emailDeliveryFailed) {
+        setPendingEmail('');
         setOtpCode('');
         setMessage(data.message || 'Verification email delivery failed. Please request a new code later.');
-      } else {
-        setMessage(data.message || 'Verification code sent.');
+        setLoading(false);
+        return;
       }
 
+      setPendingEmail(data.email || form.email);
+      setMessage(data.message || 'Verification code sent.');
       setLoading(false);
     } catch (error) {
       const status = error?.response?.status;
       const message = error?.response?.data?.message || error?.message;
 
-      if (status === 500 && message && message.includes('verification email')) {
-        setPendingEmail(form.email);
-        setMessage('Signup is ready, but email delivery is unavailable right now. Please use the code section below if you receive a manual code or try again shortly.');
+      if (status === 503 && message && message.includes('verification email')) {
+        setPendingEmail('');
+        setOtpCode('');
+        setMessage('Signup is ready, but email delivery is unavailable right now. Please retry after the mail service is configured.');
+      } else if (status === 500 && message && message.includes('verification email')) {
+        setPendingEmail('');
+        setOtpCode('');
+        setMessage('Signup is ready, but email delivery is unavailable right now. Please try again shortly.');
       } else {
         setMessage(getErrorMessage(error));
       }
@@ -161,6 +168,36 @@ function SignUpPage() {
       window.setTimeout(() => {
         setLoading(false);
       }, 600);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    const email = String(form.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      setMessage('Enter your email first, then continue with Google sign-up.');
+      return;
+    }
+
+    const seedName = String(form.username || email.split('@')[0] || 'Google User').trim();
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const response = await axios.post(buildApiUrl('/auth/google'), {
+        name: seedName,
+        email,
+        username: form.username || email.split('@')[0],
+      });
+      const data = response?.data || {};
+      persistSession(data.token, data.user);
+      setMessage(data.message || 'Google account ready.');
+      setTransitioning(true);
+      window.setTimeout(() => {
+        navigate('/home');
+      }, 900);
+    } catch (error) {
+      setMessage(getErrorMessage(error));
+      setLoading(false);
     }
   };
 
@@ -364,7 +401,7 @@ function SignUpPage() {
               <div className="h-px flex-1 bg-slate-800" />
             </div>
 
-            <button className="mt-3 flex w-full items-center justify-center gap-3 rounded-full border-[2.5px] border-slate-700 bg-slate-950/70 px-4 py-3 text-sm font-medium text-slate-200 transition duration-300 hover:-translate-y-0.5 hover:border-rose-400 hover:bg-slate-950/80 hover:text-white sm:mt-5">
+            <button type="button" onClick={handleGoogleSignup} className="mt-3 flex w-full items-center justify-center gap-3 rounded-full border-[2.5px] border-slate-700 bg-slate-950/70 px-4 py-3 text-sm font-medium text-slate-200 transition duration-300 hover:-translate-y-0.5 hover:border-rose-400 hover:bg-slate-950/80 hover:text-white sm:mt-5">
               <span className="text-base">G</span>
               Google sign-up
             </button>

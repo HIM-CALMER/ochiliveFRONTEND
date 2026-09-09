@@ -60,6 +60,38 @@ function LoginPage() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleGoogleLogin = async () => {
+    const email = String(form.identity || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      setMessage('Enter your Google email or email address first, then continue with Google sign-in.');
+      return;
+    }
+
+    const name = email.split('@')[0] || 'Google User';
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const response = await axios.post(buildApiUrl('/auth/google'), {
+        name,
+        email,
+      });
+      const data = response?.data || {};
+      persistSession(data.token, data.user);
+      setMessage(data.message || 'Google sign-in successful.');
+      setTransitioning(true);
+      window.setTimeout(() => {
+        navigate('/home');
+      }, 900);
+    } catch (error) {
+      setMessage(getErrorMessage(error));
+      setLoading(false);
+      window.setTimeout(() => {
+        setLoading(false);
+      }, 600);
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -203,7 +235,7 @@ function LoginPage() {
               <div className="h-px flex-1 bg-slate-950" />
             </div>
 
-            <button className="mt-3 flex w-full items-center justify-center gap-3 rounded-full border-[2.5px] border-slate-700 bg-slate-950/70 px-4 py-3 text-sm font-medium text-slate-200 transition duration-300 hover:-translate-y-0.5 hover:border-rose-400 hover:bg-slate-950/80 hover:text-white sm:mt-5">
+            <button type="button" onClick={handleGoogleLogin} className="mt-3 flex w-full items-center justify-center gap-3 rounded-full border-[2.5px] border-slate-700 bg-slate-950/70 px-4 py-3 text-sm font-medium text-slate-200 transition duration-300 hover:-translate-y-0.5 hover:border-rose-400 hover:bg-slate-950/80 hover:text-white sm:mt-5">
               <span className="text-base">G</span>
               Google sign-in
             </button>
