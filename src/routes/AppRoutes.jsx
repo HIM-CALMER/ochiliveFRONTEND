@@ -17,6 +17,7 @@ import WalletTransactions from '../pages/wallet/WalletTransactions';
 import WalletWithdrawals from '../pages/wallet/WalletWithdrawals';
 import ProfilePage from '../pages/ProfilePage';
 import UploadPage from '../pages/UploadPage';
+import LiveViewerPage from '../pages/LiveViewerPage';
 import NotificationsPage from '../pages/NotificationsPage';
 import MessagesPage from '../pages/MessagesPage';
 import SettingsPage from '../pages/SettingsPage';
@@ -44,6 +45,7 @@ function AppRoutes() {
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/profile/:username" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/upload" element={<UploadPage />} />
+      <Route path="/live/:roomId" element={<ProtectedRoute><LiveViewerPage /></ProtectedRoute>} />
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
     </Routes>

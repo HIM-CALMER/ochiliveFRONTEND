@@ -1,7 +1,8 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Room, RoomEvent, createLocalAudioTrack, createLocalVideoTrack } from 'livekit-client';
 import DashboardShell from '../components/DashboardShell';
-import { createLiveRoom, endLiveRoom, getProfileSummary, startLiveRoom, uploadVideoPost, uploadVideoFile } from '../api/dashboardApi';
+import { createLiveRoom, endLiveRoom, getLiveRoomHostToken, getProfileSummary, startLiveRoom, uploadVideoPost, uploadVideoFile } from '../api/dashboardApi';
 
 /* ---------------------------------------------------------------
    Iconography — thin, consistent 24px line system
@@ -163,12 +164,14 @@ function UploadPage() {
   const fileInputRef = useRef(null);
   const canvasRef = useRef(null);
   const recorderRef = useRef(null);
+  const cameraRequestRef = useRef(0);
 
   const [activeTab, setActiveTab] = useState('video');
   const [screen, setScreen] = useState('camera');
   const [stream, setStream] = useState(null);
   const [cameraFacing, setCameraFacing] = useState('user');
   const [cameraLoading, setCameraLoading] = useState(false);
+  const [cameraError, setCameraError] = useState('');
   const [recording, setRecording] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewType, setPreviewType] = useState('video');
@@ -192,6 +195,10 @@ function UploadPage() {
   const [liveDescription, setLiveDescription] = useState('');
   const [liveFormat, setLiveFormat] = useState('standup');
   const [liveVisibility, setLiveVisibility] = useState('public');
+  const [liveDetailsOpen, setLiveDetailsOpen] = useState(false);
+  const [livekitRoom, setLivekitRoom] = useState(null);
+  const [liveViewerCount, setLiveViewerCount] = useState(0);
+  const livekitUrl = import.meta.env.VITE_LIVEKIT_URL || 'ws://localhost:7880';
 
   useEffect(() => {
     let sessionUser = null;
@@ -278,27 +285,65 @@ function UploadPage() {
 
   const openCamera = async (mode, facing = cameraFacing) => {
     if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Camera access is unavailable in this browser or because the page is not using HTTPS.');
       setStatus('Camera unavailable.');
       return;
     }
 
+    const requestId = cameraRequestRef.current + 1;
+    cameraRequestRef.current = requestId;
     setCameraLoading(true);
-    try {
-      const cameraStream = await navigator.mediaDevices.getUserMedia({
+    setCameraError('');
+
+    const wantsAudio = mode === 'video' && activeTab !== 'live';
+    const requests = [
+      {
         video: {
           facingMode: { ideal: facing },
           width: { ideal: 1280 },
           height: { ideal: 720 },
           frameRate: { ideal: 30 },
         },
-        audio: mode === 'video',
-      });
+        audio: wantsAudio,
+      },
+      { video: { facingMode: { ideal: facing } }, audio: wantsAudio },
+      { video: true, audio: wantsAudio },
+    ];
+
+    try {
+      let cameraStream = null;
+      let lastError = null;
+      for (const request of requests) {
+        try {
+          cameraStream = await navigator.mediaDevices.getUserMedia(request);
+          break;
+        } catch (error) {
+          lastError = error;
+          if (error?.name === 'NotAllowedError' || error?.name === 'NotFoundError' || error?.name === 'NotReadableError') break;
+        }
+      }
+
+      if (!cameraStream) throw lastError || new Error('Camera request failed.');
+      if (cameraRequestRef.current !== requestId) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       setStream(cameraStream);
       setStatus(facing === 'user' ? 'Front camera ready.' : 'Back camera ready.');
     } catch (error) {
-      setStatus('Allow camera access to capture content.');
+      const reason = error?.name === 'NotAllowedError'
+        ? 'Camera permission was blocked. Allow camera access in your browser settings, then try again.'
+        : error?.name === 'NotFoundError'
+          ? 'No camera was found on this device. Connect a camera and try again.'
+          : error?.name === 'NotReadableError'
+          ? 'Your camera is busy in another app or browser tab. Close it and try again.'
+          : error?.name === 'OverconstrainedError'
+            ? 'This camera does not support the requested quality. Try again with the default camera.'
+            : 'We could not open the camera. Check your device camera and browser permissions.';
+      setCameraError(reason);
+      setStatus(reason);
     } finally {
-      setCameraLoading(false);
+      if (cameraRequestRef.current === requestId) setCameraLoading(false);
     }
   };
 
@@ -348,15 +393,48 @@ function UploadPage() {
     }
   };
 
+  const connectHostToLiveKit = async (roomId) => {
+    const roomResponse = await getLiveRoomHostToken(roomId);
+    const room = new Room({
+      adaptiveStream: true,
+      dynacast: true,
+      videoCaptureDefaults: { resolution: { width: 1280, height: 720 } },
+      audioCaptureDefaults: { autoGainControl: true, echoCancellation: true, noiseSuppression: true },
+    });
+
+    await room.connect(roomResponse.livekitUrl || livekitUrl, roomResponse.token);
+
+    const syncViewerCount = () => setLiveViewerCount(room.remoteParticipants.size);
+    room.on(RoomEvent.ParticipantConnected, syncViewerCount);
+    room.on(RoomEvent.ParticipantDisconnected, syncViewerCount);
+
+    const audioTrack = await createLocalAudioTrack({
+      autoGainControl: true,
+      echoCancellation: true,
+      noiseSuppression: true,
+    });
+    const videoTrack = await createLocalVideoTrack({
+      facingMode: cameraFacing === 'user' ? 'user' : 'environment',
+      resolution: { width: 1280, height: 720 },
+    });
+
+    await room.localParticipant.publishTrack(audioTrack);
+    await room.localParticipant.publishTrack(videoTrack);
+    syncViewerCount();
+    setLivekitRoom(room);
+    return room;
+  };
+
   const startPreparedLive = async () => {
     if (!liveRoomId) return prepareLiveRoom();
     setLiveStarting(true);
     try {
       await startLiveRoom(liveRoomId);
+      await connectHostToLiveKit(liveRoomId);
       setLiveStarted(true);
       setStatus('You are live. Your audience can join now.');
     } catch (error) {
-      setStatus(error?.response?.data?.message || 'Unable to start the live room.');
+      setStatus(error?.response?.data?.message || error?.message || 'Unable to start the live room.');
     } finally {
       setLiveStarting(false);
     }
@@ -366,6 +444,11 @@ function UploadPage() {
     if (!liveRoomId) return;
     setLiveStarting(true);
     try {
+      if (livekitRoom) {
+        await livekitRoom.disconnect();
+        setLivekitRoom(null);
+      }
+      setLiveViewerCount(0);
       const result = await endLiveRoom(liveRoomId);
       setLiveStarted(false);
       stopCamera();
@@ -485,8 +568,9 @@ function UploadPage() {
 
     try {
         let mediaUrlToSend = previewUrl;
+        let thumbnailUrlToSend = previewUrl;
         // If preview is a blob/data URL, upload the file first to get a persistent URL
-        if (previewType === 'video' && (previewUrl.startsWith('blob:') || previewUrl.startsWith('data:'))) {
+        if (previewUrl.startsWith('blob:') || previewUrl.startsWith('data:')) {
           const blob = await (await fetch(previewUrl)).blob();
           const ext = (blob.type && blob.type.split('/')[1]) || 'webm';
           const file = new File([blob], `upload_${Date.now()}.${ext}`, { type: blob.type || 'video/webm' });
@@ -494,6 +578,7 @@ function UploadPage() {
           form.append('file', file);
           const uploadResp = await uploadVideoFile(form);
           mediaUrlToSend = uploadResp.url || mediaUrlToSend;
+          thumbnailUrlToSend = uploadResp.thumbnailUrl || mediaUrlToSend;
         }
 
         await uploadVideoPost({
@@ -501,7 +586,8 @@ function UploadPage() {
           category: previewType === 'video' ? 'Video' : 'Photo',
           description: caption,
           mediaUrl: mediaUrlToSend,
-          thumbnailUrl: mediaUrlToSend,
+          thumbnailUrl: thumbnailUrlToSend,
+          visibility: privacy,
           type: previewType,
         });
       setStatus('Uploaded.');
@@ -721,9 +807,28 @@ function UploadPage() {
                     <span className={`h-1.5 w-1.5 rounded-full ${liveStarted ? 'animate-pulse bg-white' : 'bg-amber-300'}`} />
                     {liveStarted ? 'Live now' : cameraLoading ? 'Checking camera' : 'Preview'}
                   </span>
-                  {liveStarted ? <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-semibold tabular-nums text-white">{Math.floor(liveElapsed / 60).toString().padStart(2, '0')}:{(liveElapsed % 60).toString().padStart(2, '0')} / {comedianProfile?.maxStreamMinutes || 5}:00</span> : null}
+                  {liveStarted ? (
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-semibold tabular-nums text-white">{Math.floor(liveElapsed / 60).toString().padStart(2, '0')}:{(liveElapsed % 60).toString().padStart(2, '0')} / {comedianProfile?.maxStreamMinutes || 5}:00</span>
+                      <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-semibold text-white">{liveViewerCount} watching</span>
+                    </div>
+                  ) : null}
                 </div>
-                {!stream && !cameraLoading ? <div className="absolute inset-0 flex items-center justify-center bg-slate-950/90 px-6 text-center"><div><p className="text-sm font-semibold text-white">Camera preview unavailable</p><p className="mt-2 text-xs text-slate-400">Allow camera and microphone access to continue.</p></div></div> : null}
+                {!stream && !cameraLoading ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-slate-950/90 px-6 text-center">
+                    <div className="max-w-sm">
+                      <p className="text-sm font-semibold text-white">Camera preview unavailable</p>
+                      <p className="mt-2 text-xs leading-5 text-slate-400">{cameraError || 'Allow camera access to continue.'}</p>
+                      <button
+                        type="button"
+                        onClick={() => openCamera('video', cameraFacing)}
+                        className="mt-4 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/15"
+                      >
+                        Try camera again
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
 
@@ -791,12 +896,12 @@ function UploadPage() {
           </section>
 
           {/* Controls / details */}
-          <section className={`up-scroll pointer-events-none absolute inset-x-0 bottom-0 z-20 min-h-0 overflow-y-auto rounded-t-2xl border-t border-white/15 bg-slate-950/95 px-3 pb-[calc(.65rem+env(safe-area-inset-bottom))] pt-2 sm:px-6 lg:relative lg:inset-auto lg:max-h-none lg:w-[380px] lg:flex-none lg:rounded-[28px] lg:border lg:bg-transparent lg:px-5 lg:py-5 lg:shadow-none ${screen === 'live' ? 'max-h-[72dvh]' : 'max-h-[44dvh]'}`}>
+          <section className={`up-scroll pointer-events-none absolute inset-x-0 bottom-0 z-20 min-h-0 overflow-y-auto px-3 pb-[calc(.65rem+env(safe-area-inset-bottom))] pt-2 sm:px-6 lg:relative lg:inset-auto lg:max-h-none lg:w-[380px] lg:flex-none lg:rounded-[28px] lg:border lg:px-5 lg:py-5 lg:shadow-none ${liveStarted && screen === 'live' ? 'max-h-none bg-transparent' : `rounded-t-2xl border-t border-white/15 bg-slate-950/95 ${screen === 'live' ? 'max-h-[34dvh] sm:max-h-[42dvh]' : 'max-h-[44dvh]'}`} ${screen !== 'live' ? 'lg:bg-transparent' : ''}`}>
             {/* mobile mode switcher */}
             <div
               role="tablist"
               aria-label="Upload mode"
-              className={`grid gap-0.5 rounded-xl border border-white/10 bg-white/5 p-0.5 lg:hidden ${comedian ? 'grid-cols-4' : 'grid-cols-3'}`}
+              className={`grid gap-0.5 rounded-xl border border-white/10 bg-white/5 p-0.5 lg:hidden ${comedian ? 'grid-cols-4' : 'grid-cols-3'} ${liveStarted ? 'hidden' : ''}`}
             >
               {options.filter((option) => comedian || option.key !== 'live').map((option) => {
                 const active = activeTab === option.key;
@@ -944,12 +1049,24 @@ function UploadPage() {
                   </div>
                 </div>
               ) : screen === 'live' ? (
-                <div key="p-live" className="up-rise space-y-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-                  <div>
-                    <p className="text-sm font-semibold text-white">Live room setup</p>
-                    <p className="mt-1.5 text-sm leading-relaxed text-slate-400">
-                      {comedian ? 'Give your audience a reason to join before you start.' : 'Complete comedian onboarding before starting a live room.'}
-                    </p>
+                <>
+                <div key="p-live" className={`up-rise rounded-2xl border border-white/10 bg-slate-900/70 p-3.5 sm:p-4 ${liveStarted ? 'hidden' : 'space-y-3'}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white">Live room setup</p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                        {liveStarted ? 'Your audience can join now.' : comedian ? 'Name your room, then start when you are ready.' : 'Complete comedian onboarding before starting a live room.'}
+                      </p>
+                    </div>
+                    {comedian ? (
+                      <button
+                        type="button"
+                        onClick={() => setLiveDetailsOpen((open) => !open)}
+                        className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 transition hover:bg-white/10 hover:text-white"
+                      >
+                        {liveDetailsOpen ? 'Less' : 'More settings'}
+                      </button>
+                    ) : null}
                   </div>
                   {!comedian ? (
                     <button type="button" onClick={() => navigate('/profile')} className="inline-flex w-full items-center justify-center rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-100 hover:bg-amber-400/15">
@@ -958,24 +1075,28 @@ function UploadPage() {
                   ) : null}
                   {comedian ? (
                     <>
-                  <div className="grid grid-cols-2 gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 p-3 text-xs text-amber-100">
+                  {!liveStarted ? <div className="grid grid-cols-2 gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 p-3 text-xs text-amber-100">
                     <div><p className="uppercase tracking-[0.16em] text-amber-200/70">Rookie limit</p><p className="mt-1 font-semibold">{comedianProfile?.maxStreamMinutes || 5} min max</p></div>
                     <div><p className="uppercase tracking-[0.16em] text-amber-200/70">This month</p><p className="mt-1 font-semibold">Up to {comedianProfile?.monthlyStreamLimit || 4} streams</p></div>
-                    <p className="col-span-2 border-t border-amber-200/10 pt-2 text-amber-100/80">Ticketed shows are unavailable at Level 1. Your shows must be free.</p>
-                  </div>
-                  <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                  </div> : null}
+                  {!liveStarted ? <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
                     Room title
-                    <input value={liveTitle} onChange={(event) => { setLiveTitle(event.target.value); setLiveRoomId(''); }} maxLength={80} placeholder="Late-night crowd work" className="mt-2 w-full border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none placeholder:text-slate-600 focus:border-rose-400" />
-                  </label>
-                  <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                    Description
-                    <textarea value={liveDescription} onChange={(event) => setLiveDescription(event.target.value)} maxLength={280} rows={2} placeholder="Tell people what kind of room this is." className="mt-2 w-full resize-none border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none placeholder:text-slate-600 focus:border-rose-400" />
-                  </label>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Format<select value={liveFormat} onChange={(event) => setLiveFormat(event.target.value)} className="mt-2 w-full border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none"><option value="standup">Stand-up</option><option value="sketch">Sketch</option><option value="storytelling">Storytelling</option><option value="crowd-work">Crowd work</option><option value="open-mic">Open mic</option></select></label>
-                    <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Audience<select value={liveVisibility} onChange={(event) => setLiveVisibility(event.target.value)} className="mt-2 w-full border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none"><option value="public">Everyone</option><option value="followers">Followers</option><option value="private">Only me</option></select></label>
-                  </div>
-                  <ul className="space-y-2">
+                    <input autoFocus={false} value={liveTitle} onChange={(event) => { setLiveTitle(event.target.value); setLiveRoomId(''); }} maxLength={80} placeholder="Late-night crowd work" className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none placeholder:text-slate-600 focus:border-rose-400" />
+                  </label> : null}
+                  {liveDetailsOpen ? (
+                    <div className="space-y-3 rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                      <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                        Description
+                        <textarea value={liveDescription} onChange={(event) => setLiveDescription(event.target.value)} maxLength={280} rows={2} placeholder="Tell people what kind of room this is." className="mt-1.5 w-full resize-none rounded-lg border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none placeholder:text-slate-600 focus:border-rose-400" />
+                      </label>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Format<select value={liveFormat} onChange={(event) => setLiveFormat(event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none"><option value="standup">Stand-up</option><option value="sketch">Sketch</option><option value="storytelling">Storytelling</option><option value="crowd-work">Crowd work</option><option value="open-mic">Open mic</option></select></label>
+                        <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Audience<select value={liveVisibility} onChange={(event) => setLiveVisibility(event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none"><option value="public">Everyone</option><option value="followers">Followers</option><option value="private">Only me</option></select></label>
+                      </div>
+                      <p className="border-t border-amber-200/10 pt-2 text-xs leading-relaxed text-amber-100/80">Ticketed shows are unavailable at Level 1. Your shows must be free.</p>
+                    </div>
+                  ) : null}
+                  {!liveStarted ? <ul className="space-y-2">
                     {[
                       { label: 'Camera', ready: Boolean(stream), pending: cameraLoading },
                       { label: 'Microphone', ready: Boolean(stream?.getAudioTracks?.().length), pending: cameraLoading },
@@ -992,7 +1113,7 @@ function UploadPage() {
                         </span>
                       </li>
                     ))}
-                  </ul>
+                  </ul> : null}
                   {liveStarted ? (
                     <button type="button" disabled={liveStarting} onClick={endPreparedLive} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-200 px-5 py-3.5 text-sm font-semibold text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60">
                       <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
@@ -1007,6 +1128,23 @@ function UploadPage() {
                     </>
                   ) : null}
                 </div>
+                {liveStarted ? (
+                  <div className="pointer-events-auto mx-auto flex w-full max-w-md items-center justify-between gap-3 rounded-2xl border border-white/15 bg-slate-950/80 p-2.5 shadow-[0_18px_50px_rgba(2,6,23,0.5)] backdrop-blur-xl lg:mx-0 lg:max-w-none">
+                    <div className="flex min-w-0 items-center gap-2.5 px-2">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-500/15 text-rose-200">
+                        <UsersIcon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-white">{liveViewerCount} watching now</p>
+                        <p className="truncate text-[10px] text-slate-400">{liveTitle || 'Your live room'}</p>
+                      </div>
+                    </div>
+                    <button type="button" disabled={liveStarting} onClick={endPreparedLive} className="shrink-0 rounded-xl bg-white px-3.5 py-2.5 text-xs font-bold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60">
+                      {liveStarting ? 'Ending...' : 'End live'}
+                    </button>
+                  </div>
+                ) : null}
+                </>
               ) : screen === 'gallery' ? (
                 <div key="p-gallery" className="up-rise space-y-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
                   <div>

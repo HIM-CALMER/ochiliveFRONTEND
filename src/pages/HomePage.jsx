@@ -1,4 +1,5 @@
 ﻿import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardShell from '../components/DashboardShell';
 import {
   getVideoFeed,
@@ -19,6 +20,7 @@ const tabs = [
 ];
 
 function HomePage() {
+  const navigate = useNavigate();
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -224,6 +226,13 @@ function HomePage() {
               <article
                 key={video.id}
                 className="relative h-[68vh] overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:h-[calc(100vh-170px)] sm:rounded-[30px]"
+                onClick={() => {
+                  if (video.type === 'live') {
+                    navigate(`/live/${video.id}`);
+                  } else {
+                    handleIncrementView(video.id);
+                  }
+                }}
                 onTouchStart={(event) => {
                   touchStartX.current = event.changedTouches[0].clientX;
                 }}
@@ -236,7 +245,14 @@ function HomePage() {
                   src={getPreviewImage(video)}
                   alt={video.title}
                   className="h-full w-full object-cover"
-                  onClick={() => handleIncrementView(video.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (video.type === 'live') {
+                      navigate(`/live/${video.id}`);
+                      return;
+                    }
+                    handleIncrementView(video.id);
+                  }}
                 />
 
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
@@ -253,7 +269,10 @@ function HomePage() {
                 <div className="absolute bottom-4 right-3 z-10 flex flex-col items-center gap-2 sm:bottom-5 sm:right-4 sm:gap-3">
                   <button
                     type="button"
-                    onClick={() => handleToggleLike(video.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleToggleLike(video.id);
+                    }}
                     className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-slate-950/50 text-base text-white shadow-lg backdrop-blur-sm transition hover:scale-105 sm:h-12 sm:w-12 sm:text-lg"
                     aria-label="Like video"
                   >
@@ -261,7 +280,10 @@ function HomePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleOpenComments(video)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleOpenComments(video);
+                    }}
                     className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-950/50 text-lg text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
                     aria-label="Comment on video"
                   >
@@ -269,7 +291,10 @@ function HomePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleToggleSave(video.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleToggleSave(video.id);
+                    }}
                     className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-950/50 text-lg text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
                     aria-label="Save video"
                   >
@@ -277,7 +302,10 @@ function HomePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleShare(video)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleShare(video);
+                    }}
                     className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-950/50 text-lg text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
                     aria-label="Share video"
                   >

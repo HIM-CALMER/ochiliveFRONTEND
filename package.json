@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "axios": "^1.18.1",
+    "livekit-client": "^2.22.2",
     "lottie-react": "^2.4.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

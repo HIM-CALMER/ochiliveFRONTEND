@@ -182,6 +182,16 @@ export const startLiveRoom = async (id) => {
   return data;
 };
 
+export const getLiveRoomHostToken = async (roomId) => {
+  const { data } = await videoApi.post(`/videos/live/rooms/${roomId}/host-token`);
+  return data;
+};
+
+export const getLiveRoomViewerToken = async (roomId) => {
+  const { data } = await videoApi.post(`/videos/live/rooms/${roomId}/viewer-token`);
+  return data;
+};
+
 export const endLiveRoom = async (id) => {
   const { data } = await videoApi.post(`/videos/live/rooms/${id}/end`);
   return data;
