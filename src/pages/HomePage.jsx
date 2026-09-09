@@ -31,6 +31,7 @@ function HomePage() {
   const [replyTarget, setReplyTarget] = useState(null);
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
+  const videoRefs = useRef({});
 
   useEffect(() => {
     setLoading(true);
@@ -45,6 +46,38 @@ function HomePage() {
       })
       .finally(() => setLoading(false));
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!videos.length || typeof IntersectionObserver === 'undefined') return undefined;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const id = entry.target.dataset.videoId;
+        const video = videoRefs.current[id];
+        if (!video) return;
+        if (entry.isIntersecting) {
+          video.muted = true;
+          video.play().catch(() => undefined);
+        } else {
+          try {
+            video.pause();
+          } catch {
+            // ignore playback pause errors
+          }
+        }
+      });
+    }, { threshold: 0.45 });
+
+    videos.forEach((video) => {
+      const element = videoRefs.current[video.id];
+      if (element?.tagName === 'VIDEO') {
+        element.dataset.videoId = video.id;
+        observer.observe(element);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [videos]);
 
   const setVideoState = (id, updater) => {
     setVideos((current) => current.map((video) => (video.id === id ? updater(video) : video)));
@@ -145,6 +178,8 @@ function HomePage() {
     }
   };
 
+  const isVideoType = (video) => String(video?.type || '').toLowerCase() === 'video' || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(String(video?.mediaUrl || video?.thumbnailUrl || ''));
+
   const handleDownload = (video) => {
     if (!video.mediaUrl) {
       showMessage('No media available to download.');
@@ -241,19 +276,43 @@ function HomePage() {
                   handleSwipe();
                 }}
               >
-                <img
-                  src={getPreviewImage(video)}
-                  alt={video.title}
-                  className="h-full w-full object-cover"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (video.type === 'live') {
-                      navigate(`/live/${video.id}`);
-                      return;
-                    }
-                    handleIncrementView(video.id);
-                  }}
-                />
+                {isVideoType(video) ? (
+                  <video
+                    ref={(node) => {
+                      if (node) videoRefs.current[video.id] = node;
+                    }}
+                    src={video.mediaUrl || video.thumbnailUrl}
+                    poster={video.thumbnailUrl || video.mediaUrl}
+                    muted
+                    autoPlay
+                    loop
+                    playsInline
+                    preload="metadata"
+                    className="h-full w-full object-cover"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (video.type === 'live') {
+                        navigate(`/live/${video.id}`);
+                        return;
+                      }
+                      handleIncrementView(video.id);
+                    }}
+                  />
+                ) : (
+                  <img
+                    src={getPreviewImage(video)}
+                    alt={video.title}
+                    className="h-full w-full object-cover"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (video.type === 'live') {
+                        navigate(`/live/${video.id}`);
+                        return;
+                      }
+                      handleIncrementView(video.id);
+                    }}
+                  />
+                )}
 
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
 

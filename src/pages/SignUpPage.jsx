@@ -138,12 +138,9 @@ function SignUpPage() {
       const data = response?.data || {};
       setPendingEmail(data.email || form.email);
 
-      if (data.otp) {
-        setOtpCode(data.otp);
-      }
-
-      if (data.emailDeliveryFailed && data.otp) {
-        setMessage(`${data.message || 'Verification code sent.'} Use the code on screen: ${data.otp}`);
+      if (data.emailDeliveryFailed) {
+        setOtpCode('');
+        setMessage(data.message || 'Verification email delivery failed. Please request a new code later.');
       } else {
         setMessage(data.message || 'Verification code sent.');
       }

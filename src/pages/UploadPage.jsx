@@ -295,7 +295,7 @@ function UploadPage() {
     setCameraLoading(true);
     setCameraError('');
 
-    const wantsAudio = mode === 'video' && activeTab !== 'live';
+    const wantsAudio = mode === 'video' || activeTab === 'live';
     const requests = [
       {
         video: {
@@ -332,11 +332,11 @@ function UploadPage() {
       setStatus(facing === 'user' ? 'Front camera ready.' : 'Back camera ready.');
     } catch (error) {
       const reason = error?.name === 'NotAllowedError'
-        ? 'Camera permission was blocked. Allow camera access in your browser settings, then try again.'
+        ? 'Camera and microphone permission was blocked. Allow both camera and microphone access in your browser settings, then try again.'
         : error?.name === 'NotFoundError'
           ? 'No camera was found on this device. Connect a camera and try again.'
           : error?.name === 'NotReadableError'
-          ? 'Your camera is busy in another app or browser tab. Close it and try again.'
+          ? 'Your camera or microphone is busy in another app or browser tab. Close it and try again.'
           : error?.name === 'OverconstrainedError'
             ? 'This camera does not support the requested quality. Try again with the default camera.'
             : 'We could not open the camera. Check your device camera and browser permissions.';
@@ -645,6 +645,24 @@ function UploadPage() {
         }
         .up-scroll::-webkit-scrollbar { width: 6px; }
         .up-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 99px; }
+        @media (max-width: 767px) {
+          .up-scroll {
+            position: relative !important;
+            inset: auto !important;
+            left: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+            max-height: min(46vh, 560px);
+            margin-top: 10px;
+            border-radius: 24px;
+            border-color: rgba(255,255,255,0.12);
+            background: rgba(15,23,42,0.96);
+          }
+          .up-mobile-stage {
+            min-height: 40vh;
+            max-height: 50vh;
+          }
+        }
         @media (prefers-reduced-motion: reduce) {
           .up-stage-in, .up-rise, .up-ring, .up-sheen::after, .up-bar-stripes { animation: none !important; }
         }
@@ -778,7 +796,7 @@ function UploadPage() {
             }}
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
-            className={`relative min-h-0 flex-1 overflow-hidden bg-black transition-all duration-300 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink lg:rounded-[28px] lg:border lg:shadow-2xl lg:shadow-black/40 ${
+            className={`up-mobile-stage relative min-h-0 flex-1 overflow-hidden bg-black transition-all duration-300 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink lg:rounded-[28px] lg:border lg:shadow-2xl lg:shadow-black/40 ${
               dragging ? 'lg:border-rose-400/60 lg:ring-2 lg:ring-rose-400/30' : 'lg:border-white/10'
             }`}
           >

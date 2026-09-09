@@ -140,8 +140,7 @@ function MessagesPage() {
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [messageText, setMessageText] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [messageText, setMessageText] = useState('');const [chatError, setChatError] = useState('');  const [loading, setLoading] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const [typingUsers, setTypingUsers] = useState({});
@@ -204,6 +203,7 @@ function MessagesPage() {
     setDirectMessageTarget(null);
     setIsMobileConversationOpen(false);
     setMessageText('');
+    setChatError('');
     setSearchParams({});
   };
 
@@ -337,44 +337,53 @@ function MessagesPage() {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!messageText.trim()) return;
+    const trimmed = String(messageText || '').trim();
+    if (!trimmed) return;
 
     const receiver = selectedConversation?.otherUser || directMessageTarget;
-    if (!receiver?.id) return;
+    if (!receiver?.id) {
+      setChatError('Choose a valid conversation before sending.');
+      return;
+    }
 
     try {
-      const response = await messageApi.sendMessage(receiver.id, messageText);
+      setChatError('');
+      const response = await messageApi.sendMessage(receiver.id, trimmed);
 
-      if (response.success) {
-        const nextConversationId = response.data?.conversationId || selectedConversation?.conversationId;
-        const nextConversation = nextConversationId
-          ? {
-              conversationId: nextConversationId,
-              otherUser: receiver,
-              isAccepted: true,
-            }
-          : {
-              conversationId: null,
-              otherUser: receiver,
-              isAccepted: true,
-            };
-
-        setSelectedConversation(nextConversation);
-        setDirectMessageTarget(null);
-        setSearchParams({});
-        setMessageText('');
-        sendTypingIndicator(false);
-
-        if (nextConversationId) {
-          const data = await messageApi.getMessages(nextConversationId);
-          setMessages(data.data || []);
-        }
-
-        const list = await messageApi.getConversations(activeTab);
-        setConversations(list.data || []);
+      if (!response?.success) {
+        setChatError(response?.message || 'Unable to send this message yet.');
+        return;
       }
+
+      const nextConversationId = response.data?.conversationId || selectedConversation?.conversationId;
+      const nextConversation = nextConversationId
+        ? {
+            conversationId: nextConversationId,
+            otherUser: receiver,
+            isAccepted: true,
+          }
+        : {
+            conversationId: null,
+            otherUser: receiver,
+            isAccepted: true,
+          };
+
+      setSelectedConversation(nextConversation);
+      setDirectMessageTarget(null);
+      setSearchParams({});
+      setMessageText('');
+      sendTypingIndicator(false);
+
+      if (nextConversationId) {
+        const data = await messageApi.getMessages(nextConversationId);
+        setMessages(data.data || []);
+      }
+
+      const list = await messageApi.getConversations(activeTab);
+      setConversations(list.data || []);
     } catch (error) {
       console.error('Error sending message:', error);
+      setChatError(error?.message || 'Unable to send the message. Try again.');
     }
   };
 
@@ -668,6 +677,7 @@ function MessagesPage() {
                 )}
 
                 <form onSubmit={handleSendMessage} className="flex-shrink-0 border-t border-slate-800 bg-slate-950/80 p-3 pb-[max(0.8rem,calc(env(safe-area-inset-bottom)+0.5rem))] sm:p-4 sm:pb-[max(1rem,calc(env(safe-area-inset-bottom)+0.75rem))]">
+                  {chatError ? <div className="mb-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{chatError}</div> : null}
                   <div className="flex w-full items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-2 py-1.5 shadow-[0_-8px_20px_rgba(15,23,42,0.2)]">
                     <button type="button" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-800 text-lg text-slate-300 transition hover:bg-slate-700 hover:text-white" aria-label="Add attachment">
                       +
