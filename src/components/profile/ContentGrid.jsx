@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { likeVideo, commentOnVideo, toggleSaveVideo, reshareVideo } from '../../api/dashboardApi';
+import { likeVideo, commentOnVideo, toggleSaveVideo, reshareVideo, followProfile, unfollowProfile } from '../../api/dashboardApi';
 
 const toneStyles = {
   plum: 'from-[#7d5f79] via-[#4b3c59] to-[#101322]',
@@ -47,6 +47,8 @@ function ContentCard({ item, tab }) {
   const [commentOpen, setCommentOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [message, setMessage] = useState('');
+  const [followingCreator, setFollowingCreator] = useState(Boolean(item.isFollowing || item.relationship?.isFollowing));
+  const [followLoading, setFollowLoading] = useState(false);
 
   const recentComments = useMemo(() => {
     return commentThread
@@ -161,12 +163,54 @@ function ContentCard({ item, tab }) {
     }
   };
 
+  const handleFollowCreator = async () => {
+    const creatorUsername = item.creatorUsername || item.creator?.username;
+    if (!creatorUsername || currentUserId === item.creatorId) return;
+
+    setFollowLoading(true);
+    try {
+      const result = followingCreator ? await unfollowProfile(creatorUsername) : await followProfile(creatorUsername);
+      const relationship = result?.relationship || {};
+      setFollowingCreator(Boolean(relationship.isFollowing || relationship.isMutual || !followingCreator));
+      setMessage(followingCreator ? 'Unfollowed creator.' : 'Now following creator.');
+    } catch (error) {
+      setMessage('Unable to update follow state right now.');
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
   const mediaUrl = item.mediaUrl || item.thumbnailUrl;
   const isVideo = (item.type === 'video') || isVideoUrl(mediaUrl);
 
   return (
     <article className="group overflow-hidden rounded-[1.2rem] border border-slate-800 bg-slate-950 shadow-[0_14px_30px_rgba(2,6,23,0.18)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-700 hover:shadow-[0_20px_42px_rgba(2,6,23,0.24)] sm:rounded-[1.45rem] sm:shadow-[0_20px_48px_rgba(2,6,23,0.18)] sm:hover:shadow-[0_26px_62px_rgba(2,6,23,0.28)]">
       <div className="relative overflow-hidden rounded-[1.2rem] bg-slate-900 sm:rounded-t-[1.45rem]">
+        <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-2 p-3 text-white">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950/70 text-[10px] font-bold text-white ring-1 ring-white/10">
+              {getInitials(item.creatorName || item.creatorUsername || 'Creator')}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-semibold text-white/95">{item.creatorName || item.creatorUsername || 'Creator'}</p>
+              <p className="truncate text-[9px] uppercase tracking-[0.18em] text-slate-300/80">{item.creatorUsername ? `@${item.creatorUsername}` : 'creator'}</p>
+            </div>
+          </div>
+          {item.creatorUsername && currentUserId !== item.creatorId && (
+            <button
+              type="button"
+              onClick={handleFollowCreator}
+              disabled={followLoading}
+              className={`rounded-full border px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] transition ${
+                followingCreator
+                  ? 'border-slate-700 bg-slate-950/70 text-slate-200 hover:border-slate-500'
+                  : 'border-rose-400/60 bg-rose-500/15 text-rose-200 hover:bg-rose-500/20'
+              }`}
+            >
+              {followLoading ? '...' : followingCreator ? 'Following' : 'Follow'}
+            </button>
+          )}
+        </div>
         <div className={`absolute inset-0 bg-gradient-to-br ${toneStyles[item.tone] || toneStyles.plum} opacity-80`} />
         {mediaUrl ? (
           isVideo ? (

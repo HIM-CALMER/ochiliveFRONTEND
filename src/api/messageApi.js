@@ -1,7 +1,7 @@
 const API_BASE = '/api/messages';
 
 const getAuthHeader = () => ({
-  Authorization: `Bearer ${sessionStorage.getItem('ochi_token')}`,
+  Authorization: `Bearer ${sessionStorage.getItem('ochi_token') || localStorage.getItem('ochi_token') || ''}`,
   'Content-Type': 'application/json',
 });
 

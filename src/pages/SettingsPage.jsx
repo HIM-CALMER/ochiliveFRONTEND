@@ -223,6 +223,8 @@ function SettingsPage() {
   const handleSignOut = () => {
     sessionStorage.removeItem('ochi_token');
     sessionStorage.removeItem('ochi_user');
+    localStorage.removeItem('ochi_token');
+    localStorage.removeItem('ochi_user');
     navigate('/login', { replace: true });
   };
 

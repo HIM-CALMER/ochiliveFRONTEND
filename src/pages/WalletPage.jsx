@@ -31,11 +31,22 @@ function WalletPage() {
 
   useEffect(() => {
     const reference = searchParams.get('reference');
+    const status = searchParams.get('status');
+
+    if (!reference && status) {
+      if (status.toLowerCase() === 'success') {
+        setFundMessage('Payment completed. Syncing your wallet...');
+      } else {
+        setFundMessage('Payment was cancelled or not completed.');
+      }
+      return;
+    }
+
     if (!reference) return;
     verifyWalletFunding(reference)
       .then((data) => {
         setWallet(data.wallet);
-        setFundMessage(data.message);
+        setFundMessage(data.message || 'Funds added successfully.');
       })
       .catch((error) => setFundMessage(error?.response?.data?.message || 'Payment verification failed.'))
       .finally(() => setSearchParams({}, { replace: true }));

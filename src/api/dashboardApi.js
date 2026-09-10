@@ -1,5 +1,28 @@
 import axios from 'axios';
 
+const getStoredSession = () => {
+  const token = sessionStorage.getItem('ochi_token') || localStorage.getItem('ochi_token') || '';
+  const rawUser = sessionStorage.getItem('ochi_user') || localStorage.getItem('ochi_user') || 'null';
+
+  try {
+    return { token, user: JSON.parse(rawUser) };
+  } catch {
+    return { token, user: null };
+  }
+};
+
+const persistSession = (token, user) => {
+  if (token) {
+    sessionStorage.setItem('ochi_token', token);
+    localStorage.setItem('ochi_token', token);
+  }
+  if (user) {
+    const userPayload = JSON.stringify(user);
+    sessionStorage.setItem('ochi_user', userPayload);
+    localStorage.setItem('ochi_user', userPayload);
+  }
+};
+
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 const API_ROOT = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
 
@@ -14,13 +37,7 @@ const videoApi = axios.create({
 });
 
 const authInterceptor = (config) => {
-  const token = sessionStorage.getItem('ochi_token');
-  let user = null;
-  try {
-    user = JSON.parse(sessionStorage.getItem('ochi_user') || 'null');
-  } catch {
-    sessionStorage.removeItem('ochi_user');
-  }
+  const { token, user } = getStoredSession();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -36,6 +53,8 @@ const handleAuthFailure = (error) => {
   if (error?.response?.status === 401 && error?.response?.data?.code === 'SESSION_ACCOUNT_NOT_FOUND') {
     sessionStorage.removeItem('ochi_token');
     sessionStorage.removeItem('ochi_user');
+    localStorage.removeItem('ochi_token');
+    localStorage.removeItem('ochi_user');
     if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
       window.location.assign('/login?reason=session-expired');
     }
@@ -117,7 +136,7 @@ export const verifyWalletFunding = async (reference) => {
 };
 
 export const getProfileSummary = async (username) => {
-  const user = JSON.parse(sessionStorage.getItem('ochi_user') || 'null');
+  const user = getStoredSession().user;
   const target = username || user?.username || user?.email?.split('@')[0] || 'creator';
   const { data } = await api.get(`/profiles/${encodeURIComponent(target)}`);
   return data;
@@ -216,6 +235,8 @@ export const getActivityFeed = async () => {
   const { data } = await api.get('/dashboard/activity');
   return data;
 };
+
+export { getStoredSession, persistSession };
 
 export const uploadAsset = async (payload) => {
   const { data } = await api.post('/dashboard/upload', payload);

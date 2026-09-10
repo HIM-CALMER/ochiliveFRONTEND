@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import SignUpPage from '../pages/SignUpPage';
 import LoginPage from '../pages/LoginPage';
+import GoogleAuthCallbackPage from '../pages/GoogleAuthCallbackPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import HomePage from '../pages/HomePage';
@@ -29,6 +30,7 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/google/callback" element={<GoogleAuthCallbackPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/home" element={<HomePage />} />

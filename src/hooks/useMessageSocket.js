@@ -8,7 +8,7 @@ export const useMessageSocket = (conversationId, callbacks = {}) => {
   useEffect(() => {
     if (!conversationId) return;
 
-    const token = sessionStorage.getItem('ochi_token');
+    const token = sessionStorage.getItem('ochi_token') || localStorage.getItem('ochi_token');
     if (!token) return;
 
     // Connect if not already connected
@@ -76,11 +76,10 @@ export const useMessageSocket = (conversationId, callbacks = {}) => {
   // Send typing indicator
   const sendTypingIndicator = useCallback((isTyping) => {
     if (socketRef.current && connectedRef.current) {
+      const storedUser = sessionStorage.getItem('ochi_user') || localStorage.getItem('ochi_user');
       socketRef.current.emit('message:typing', {
         conversationId,
-        userId: sessionStorage.getItem('ochi_user')
-          ? JSON.parse(sessionStorage.getItem('ochi_user')).id
-          : null,
+        userId: storedUser ? JSON.parse(storedUser).id : null,
         isTyping,
       });
     }
@@ -99,13 +98,12 @@ export const useMessageSocket = (conversationId, callbacks = {}) => {
   // Send reaction
   const sendReaction = useCallback((messageId, emoji) => {
     if (socketRef.current && connectedRef.current) {
+      const storedUser = sessionStorage.getItem('ochi_user') || localStorage.getItem('ochi_user');
       socketRef.current.emit('message:reaction', {
         conversationId,
         messageId,
         emoji,
-        userId: sessionStorage.getItem('ochi_user')
-          ? JSON.parse(sessionStorage.getItem('ochi_user')).id
-          : null,
+        userId: storedUser ? JSON.parse(storedUser).id : null,
       });
     }
   }, [conversationId]);
@@ -113,12 +111,11 @@ export const useMessageSocket = (conversationId, callbacks = {}) => {
   // Send read receipt
   const sendReadReceipt = useCallback((messageId) => {
     if (socketRef.current && connectedRef.current) {
+      const storedUser = sessionStorage.getItem('ochi_user') || localStorage.getItem('ochi_user');
       socketRef.current.emit('message:read', {
         conversationId,
         messageId,
-        userId: sessionStorage.getItem('ochi_user')
-          ? JSON.parse(sessionStorage.getItem('ochi_user')).id
-          : null,
+        userId: storedUser ? JSON.parse(storedUser).id : null,
       });
     }
   }, [conversationId]);

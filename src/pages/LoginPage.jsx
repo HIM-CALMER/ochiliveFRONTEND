@@ -44,7 +44,9 @@ const getErrorMessage = (error) => {
 
 const persistSession = (token, user) => {
   sessionStorage.setItem('ochi_token', token);
+  localStorage.setItem('ochi_token', token);
   sessionStorage.setItem('ochi_user', JSON.stringify(user));
+  localStorage.setItem('ochi_user', JSON.stringify(user));
 };
 
 function LoginPage() {
@@ -61,35 +63,7 @@ function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
-    const email = String(form.identity || '').trim().toLowerCase();
-    if (!email || !email.includes('@')) {
-      setMessage('Enter your Google email or email address first, then continue with Google sign-in.');
-      return;
-    }
-
-    const name = email.split('@')[0] || 'Google User';
-    setLoading(true);
-    setMessage('');
-
-    try {
-      const response = await axios.post(buildApiUrl('/auth/google'), {
-        name,
-        email,
-      });
-      const data = response?.data || {};
-      persistSession(data.token, data.user);
-      setMessage(data.message || 'Google sign-in successful.');
-      setTransitioning(true);
-      window.setTimeout(() => {
-        navigate('/home');
-      }, 900);
-    } catch (error) {
-      setMessage(getErrorMessage(error));
-      setLoading(false);
-      window.setTimeout(() => {
-        setLoading(false);
-      }, 600);
-    }
+    window.location.assign(buildApiUrl('/auth/google/start'));
   };
 
   const handleSubmit = async (event) => {

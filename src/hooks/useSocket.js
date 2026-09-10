@@ -7,7 +7,7 @@ function useSocket() {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const token = sessionStorage.getItem('ochi_token');
+    const token = sessionStorage.getItem('ochi_token') || localStorage.getItem('ochi_token');
     if (!token) return undefined;
     const client = io(SOCKET_URL, {
       transports: ['websocket'],
