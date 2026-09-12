@@ -1,27 +1,5 @@
 import axios from 'axios';
-
-const getStoredSession = () => {
-  const token = sessionStorage.getItem('ochi_token') || localStorage.getItem('ochi_token') || '';
-  const rawUser = sessionStorage.getItem('ochi_user') || localStorage.getItem('ochi_user') || 'null';
-
-  try {
-    return { token, user: JSON.parse(rawUser) };
-  } catch {
-    return { token, user: null };
-  }
-};
-
-const persistSession = (token, user) => {
-  if (token) {
-    sessionStorage.setItem('ochi_token', token);
-    localStorage.setItem('ochi_token', token);
-  }
-  if (user) {
-    const userPayload = JSON.stringify(user);
-    sessionStorage.setItem('ochi_user', userPayload);
-    localStorage.setItem('ochi_user', userPayload);
-  }
-};
+import { getStoredSession, persistSession, clearSession } from '../utils/session';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 const API_ROOT = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
@@ -51,10 +29,7 @@ videoApi.interceptors.request.use(authInterceptor);
 
 const handleAuthFailure = (error) => {
   if (error?.response?.status === 401 && error?.response?.data?.code === 'SESSION_ACCOUNT_NOT_FOUND') {
-    sessionStorage.removeItem('ochi_token');
-    sessionStorage.removeItem('ochi_user');
-    localStorage.removeItem('ochi_token');
-    localStorage.removeItem('ochi_user');
+    clearSession();
     if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
       window.location.assign('/login?reason=session-expired');
     }

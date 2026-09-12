@@ -46,12 +46,7 @@ const getErrorMessage = (error) => {
   return 'Unable to create your account right now. Please check that the backend is running and try again.';
 };
 
-const persistSession = (token, user) => {
-  sessionStorage.setItem('ochi_token', token);
-  localStorage.setItem('ochi_token', token);
-  sessionStorage.setItem('ochi_user', JSON.stringify(user));
-  localStorage.setItem('ochi_user', JSON.stringify(user));
-};
+import { persistSession } from '../utils/session';
 
 const getPasswordStrength = (password) => {
   const checks = [

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { persistSession } from '../utils/session';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 const buildApiUrl = (path) => `${API_BASE_URL}${API_BASE_URL.endsWith('/api') ? '' : '/api'}${path}`;
@@ -24,10 +25,7 @@ function GoogleAuthCallbackPage() {
 
       try {
         const response = await axios.post(buildApiUrl('/auth/google/exchange'), { code });
-        sessionStorage.setItem('ochi_token', response.data.token);
-        localStorage.setItem('ochi_token', response.data.token);
-        sessionStorage.setItem('ochi_user', JSON.stringify(response.data.user));
-        localStorage.setItem('ochi_user', JSON.stringify(response.data.user));
+        persistSession(response.data.token, response.data.user);
         navigate('/home', { replace: true });
       } catch (error) {
         if (!active) return;
