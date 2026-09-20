@@ -5,6 +5,17 @@ const getAuthHeader = () => ({
   'Content-Type': 'application/json',
 });
 
+const parseResponse = async (response) => {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: 'Server response was not valid JSON.', success: false };
+  }
+};
+
 export const messageApi = {
   // Send a message
   sendMessage: async (receiverId, text, mediaUrl = '', mediaType = '') => {
@@ -18,7 +29,15 @@ export const messageApi = {
         mediaType,
       }),
     });
-    return response.json();
+
+    const payload = await parseResponse(response);
+    if (!response.ok) {
+      const error = new Error(payload?.message || 'Unable to send the message right now.');
+      error.response = { data: payload, status: response.status };
+      throw error;
+    }
+
+    return payload;
   },
 
   // Get conversations with optional tab filter

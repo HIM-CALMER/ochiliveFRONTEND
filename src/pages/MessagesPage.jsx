@@ -338,7 +338,15 @@ function MessagesPage() {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     const trimmed = String(messageText || '').trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      setChatError('Please type a message before sending.');
+      return;
+    }
+
+    if (trimmed.length > 2000) {
+      setChatError('Messages must be 2000 characters or fewer.');
+      return;
+    }
 
     const receiver = selectedConversation?.otherUser || directMessageTarget;
     if (!receiver?.id) {

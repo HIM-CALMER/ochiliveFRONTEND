@@ -420,7 +420,7 @@ function ContentGrid({ items, tab, isOwnProfile }) {
   }
 
   return (
-    <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3" role="tabpanel">
+    <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4" role="tabpanel">
       {items.map((item) => (
         <ContentCard key={item.id} item={item} tab={tab} />
       ))}

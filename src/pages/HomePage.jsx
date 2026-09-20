@@ -7,7 +7,10 @@ import {
   likeVideo,
   commentOnVideo,
   toggleSaveVideo,
+  followProfile,
+  unfollowProfile,
 } from '../api/dashboardApi';
+import { getStoredSession } from '../utils/session';
 
 const placeholderImage =
   'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&h=800&fit=crop&q=80';
@@ -32,6 +35,8 @@ function HomePage() {
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
   const videoRefs = useRef({});
+  const viewedIds = useRef(new Set());
+  const [mutedVideos, setMutedVideos] = useState({});
 
   useEffect(() => {
     setLoading(true);
@@ -56,7 +61,10 @@ function HomePage() {
         const video = videoRefs.current[id];
         if (!video) return;
         if (entry.isIntersecting) {
-          video.muted = true;
+          if (!viewedIds.current.has(id)) {
+            viewedIds.current.add(id);
+            handleIncrementView(id);
+          }
           video.play().catch(() => undefined);
         } else {
           try {
@@ -127,6 +135,21 @@ function HomePage() {
       showMessage(response.saved ? 'Saved to your library.' : 'Removed from saved posts.');
     } catch (err) {
       showMessage('Unable to save this post.');
+    }
+  };
+
+  const handleToggleFollow = async (video) => {
+    if (!video.creatorUsername) return;
+    try {
+      const result = video.isFollowing
+        ? await unfollowProfile(video.creatorUsername)
+        : await followProfile(video.creatorUsername);
+      setVideoState(video.id, (current) => ({
+        ...current,
+        isFollowing: Boolean(result?.relationship?.isFollowing ?? !video.isFollowing),
+      }));
+    } catch {
+      showMessage('Unable to update follow state right now.');
     }
   };
 
@@ -265,7 +288,6 @@ function HomePage() {
                   if (video.type === 'live') {
                     navigate(`/live/${video.id}`);
                   } else {
-                    handleIncrementView(video.id);
                   }
                 }}
                 onTouchStart={(event) => {
@@ -283,7 +305,7 @@ function HomePage() {
                     }}
                     src={video.mediaUrl || video.thumbnailUrl}
                     poster={video.thumbnailUrl || video.mediaUrl}
-                    muted
+                    muted={mutedVideos[video.id] !== false}
                     autoPlay
                     loop
                     playsInline
@@ -295,7 +317,6 @@ function HomePage() {
                         navigate(`/live/${video.id}`);
                         return;
                       }
-                      handleIncrementView(video.id);
                     }}
                   />
                 ) : (
@@ -309,7 +330,6 @@ function HomePage() {
                         navigate(`/live/${video.id}`);
                         return;
                       }
-                      handleIncrementView(video.id);
                     }}
                   />
                 )}
@@ -317,12 +337,21 @@ function HomePage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
 
                 <div className="absolute inset-x-0 top-3 flex items-center justify-between px-3 sm:top-4 sm:px-4">
-                  <span className="rounded-full border border-white/10 bg-slate-950/40 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-100 backdrop-blur-sm sm:px-2.5 sm:py-1 sm:text-[10px]">
-                    {video.type === 'live' ? 'LIVE' : video.category || 'Creator'}
-                  </span>
-                  <span className="rounded-full bg-slate-950/40 px-2 py-0.5 text-[9px] font-medium text-slate-200 backdrop-blur-sm sm:px-2.5 sm:py-1 sm:text-[10px]">
-                    {video.type === 'live' ? `${Number(video.views || 0).toLocaleString()} watching` : `${Number(video.views || 0).toLocaleString()} views`}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full border border-white/10 bg-slate-950/40 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-100 backdrop-blur-sm sm:px-2.5 sm:py-1 sm:text-[10px]">
+                      {video.type === 'live' ? 'LIVE' : video.category || 'Creator'}
+                    </span>
+                    {video.creatorUsername && getStoredSession().user?.username !== video.creatorUsername ? (
+                      <button type="button" onClick={(event) => { event.stopPropagation(); handleToggleFollow(video); }} className="rounded-full bg-white px-2.5 py-1 text-[9px] font-bold text-slate-950 shadow-lg">
+                        {video.isFollowing ? 'Following' : 'Follow'}
+                      </button>
+                    ) : null}
+                  </div>
+                  {isVideoType(video) ? (
+                    <button type="button" onClick={(event) => { event.stopPropagation(); setMutedVideos((current) => ({ ...current, [video.id]: current[video.id] === false })); }} className="rounded-full bg-slate-950/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm" aria-label={mutedVideos[video.id] === false ? 'Mute video' : 'Unmute video'}>
+                      {mutedVideos[video.id] === false ? 'Sound on' : 'Muted'}
+                    </button>
+                  ) : <span className="rounded-full bg-slate-950/40 px-2.5 py-0.5 text-[9px] font-medium text-slate-200 backdrop-blur-sm sm:px-2.5 sm:py-1 sm:text-[10px]">{Number(video.views || 0).toLocaleString()} views</span>}
                 </div>
 
                 <div className="absolute bottom-4 right-3 z-10 flex flex-col items-center gap-2 sm:bottom-5 sm:right-4 sm:gap-3">
@@ -335,7 +364,7 @@ function HomePage() {
                     className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-slate-950/50 text-base text-white shadow-lg backdrop-blur-sm transition hover:scale-105 sm:h-12 sm:w-12 sm:text-lg"
                     aria-label="Like video"
                   >
-                    {video.liked ? '♥' : '♡'}
+                    <span>{video.liked ? '♥' : '♡'}</span><small>{Number(video.likes || 0).toLocaleString()}</small>
                   </button>
                   <button
                     type="button"
@@ -346,7 +375,7 @@ function HomePage() {
                     className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-950/50 text-lg text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
                     aria-label="Comment on video"
                   >
-                    💬
+                    <span>💬</span><small>{Number(video.comments || 0).toLocaleString()}</small>
                   </button>
                   <button
                     type="button"
@@ -357,7 +386,7 @@ function HomePage() {
                     className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-950/50 text-lg text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
                     aria-label="Save video"
                   >
-                    {video.saved ? '✓' : '⎘'}
+                    <span>{video.saved ? '✓' : '⎘'}</span><small>{Number(video.saves || video.savedCount || 0).toLocaleString()}</small>
                   </button>
                   <button
                     type="button"
@@ -368,7 +397,7 @@ function HomePage() {
                     className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-950/50 text-lg text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
                     aria-label="Share video"
                   >
-                    ↗
+                    <span>↗</span><small>{Number(video.shares || video.shareCount || 0).toLocaleString()}</small>
                   </button>
                 </div>
 
