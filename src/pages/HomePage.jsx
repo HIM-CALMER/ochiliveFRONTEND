@@ -38,6 +38,7 @@ function HomePage() {
   const viewedIds = useRef(new Set());
   const viewTimers = useRef(new Map());
   const lastVideoTap = useRef(new Map());
+  const tapTimers = useRef(new Map());
   const [mutedVideos, setMutedVideos] = useState({});
   const [heartBurstVideoId, setHeartBurstVideoId] = useState(null);
 
@@ -176,18 +177,27 @@ function HomePage() {
     lastVideoTap.current.set(video.id, now);
 
     if (now - previousTap < 320) {
+      const pendingTap = tapTimers.current.get(video.id);
+      if (pendingTap) {
+        window.clearTimeout(pendingTap);
+        tapTimers.current.delete(video.id);
+      }
       handleToggleLike(video.id);
       setHeartBurstVideoId(video.id);
       window.setTimeout(() => setHeartBurstVideoId((current) => (current === video.id ? null : current)), 850);
       return;
     }
 
-    const element = videoRefs.current[video.id];
-    if (!element) return;
-    const nextMuted = !element.muted;
-    element.muted = nextMuted;
-    setMutedVideos((current) => ({ ...current, [video.id]: nextMuted }));
-    if (!nextMuted) element.play().catch(() => undefined);
+    const pendingTap = window.setTimeout(() => {
+      tapTimers.current.delete(video.id);
+      const element = videoRefs.current[video.id];
+      if (!element) return;
+      const nextMuted = !element.muted;
+      element.muted = nextMuted;
+      setMutedVideos((current) => ({ ...current, [video.id]: nextMuted }));
+      if (!nextMuted) element.play().catch(() => undefined);
+    }, 320);
+    tapTimers.current.set(video.id, pendingTap);
   };
 
   const handleToggleSound = (event, id) => {
