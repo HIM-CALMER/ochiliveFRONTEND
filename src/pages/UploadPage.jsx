@@ -673,6 +673,19 @@ function UploadPage() {
             min-height: 40vh;
             max-height: 50vh;
           }
+          .up-capture-stage {
+            min-height: 0;
+            max-height: none;
+          }
+          .up-capture-controls {
+            position: absolute !important;
+            inset: auto 0 0 !important;
+            max-height: none !important;
+            margin-top: 0 !important;
+            border-radius: 0 !important;
+            border-top-color: rgba(255,255,255,0.08);
+            background: linear-gradient(to top, rgba(2,6,23,0.98), rgba(2,6,23,0.72), transparent) !important;
+          }
         }
         @media (prefers-reduced-motion: reduce) {
           .up-stage-in, .up-rise, .up-ring, .up-sheen::after, .up-bar-stripes { animation: none !important; }
@@ -807,7 +820,7 @@ function UploadPage() {
             }}
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
-            className={`up-mobile-stage relative min-h-0 flex-1 overflow-hidden bg-black transition-all duration-300 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink lg:rounded-[28px] lg:border lg:shadow-2xl lg:shadow-black/40 lg:max-h-[78vh] lg:aspect-[9/16] lg:max-w-[420px] ${
+            className={`up-mobile-stage ${screen !== 'preview' ? 'up-capture-stage' : ''} relative min-h-0 flex-1 overflow-hidden bg-black transition-all duration-300 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink lg:rounded-[28px] lg:border lg:shadow-2xl lg:shadow-black/40 lg:max-h-[calc(100dvh-8rem)] lg:aspect-[9/16] lg:max-w-[420px] ${
               dragging ? 'lg:border-rose-400/60 lg:ring-2 lg:ring-rose-400/30' : 'lg:border-white/10'
             }`}
           >
@@ -925,7 +938,7 @@ function UploadPage() {
           </section>
 
           {/* Controls / details */}
-          <section className={`up-scroll pointer-events-auto absolute inset-x-0 bottom-0 z-20 min-h-0 touch-manipulation overflow-y-auto overscroll-contain px-3 pb-[calc(.65rem+env(safe-area-inset-bottom))] pt-2 sm:px-6 lg:relative lg:inset-auto lg:max-h-none lg:w-[380px] lg:flex-none lg:rounded-[28px] lg:border lg:px-5 lg:py-5 lg:shadow-none ${liveStarted && screen === 'live' ? 'max-h-none bg-transparent' : `rounded-t-2xl border-t border-white/15 bg-slate-950/95 ${screen === 'live' ? 'max-h-[34dvh] sm:max-h-[42dvh]' : 'max-h-[44dvh]'}`} ${screen !== 'live' ? 'lg:bg-transparent' : ''}`}>
+          <section className={`up-scroll ${screen !== 'preview' ? 'up-capture-controls' : ''} pointer-events-auto absolute inset-x-0 bottom-0 z-20 min-h-0 touch-manipulation overflow-y-auto overscroll-contain px-3 pb-[calc(.65rem+env(safe-area-inset-bottom))] pt-2 sm:px-6 lg:relative lg:inset-auto lg:max-h-none lg:w-[380px] lg:flex-none lg:rounded-[28px] lg:border lg:px-5 lg:py-5 lg:shadow-none ${liveStarted && screen === 'live' ? 'max-h-none bg-transparent' : `rounded-t-2xl border-t border-white/15 bg-slate-950/95 ${screen === 'live' ? 'max-h-[34dvh] sm:max-h-[42dvh]' : 'max-h-[44dvh]'}`} ${screen !== 'live' ? 'lg:bg-transparent' : ''}`}>
             {/* mobile mode switcher */}
             <div
               role="tablist"

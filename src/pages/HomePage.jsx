@@ -37,7 +37,9 @@ function HomePage() {
   const videoRefs = useRef({});
   const viewedIds = useRef(new Set());
   const viewTimers = useRef(new Map());
+  const lastVideoTap = useRef(new Map());
   const [mutedVideos, setMutedVideos] = useState({});
+  const [heartBurstVideoId, setHeartBurstVideoId] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -103,7 +105,7 @@ function HomePage() {
       const element = videoRefs.current[video.id];
       if (element?.tagName === 'VIDEO') {
         element.dataset.videoId = video.id;
-        element.muted = true;
+        element.muted = mutedVideos[video.id] !== false;
         element.playsInline = true;
         observer.observe(element);
       }
@@ -114,7 +116,7 @@ function HomePage() {
       viewTimers.current.clear();
       observer.disconnect();
     };
-  }, [videos]);
+  }, [videos, mutedVideos]);
 
   const setVideoState = (id, updater) => {
     setVideos((current) => current.map((video) => (video.id === id ? updater(video) : video)));
@@ -160,6 +162,42 @@ function HomePage() {
     } catch (err) {
       showMessage('Unable to like the post.');
     }
+  };
+
+  const handleVideoTap = (event, video) => {
+    event.stopPropagation();
+    if (video.type === 'live') {
+      navigate(`/live/${video.id}`);
+      return;
+    }
+
+    const now = Date.now();
+    const previousTap = lastVideoTap.current.get(video.id) || 0;
+    lastVideoTap.current.set(video.id, now);
+
+    if (now - previousTap < 320) {
+      handleToggleLike(video.id);
+      setHeartBurstVideoId(video.id);
+      window.setTimeout(() => setHeartBurstVideoId((current) => (current === video.id ? null : current)), 850);
+      return;
+    }
+
+    const element = videoRefs.current[video.id];
+    if (!element) return;
+    const nextMuted = !element.muted;
+    element.muted = nextMuted;
+    setMutedVideos((current) => ({ ...current, [video.id]: nextMuted }));
+    if (!nextMuted) element.play().catch(() => undefined);
+  };
+
+  const handleToggleSound = (event, id) => {
+    event.stopPropagation();
+    const element = videoRefs.current[id];
+    if (!element) return;
+    const nextMuted = !element.muted;
+    element.muted = nextMuted;
+    setMutedVideos((current) => ({ ...current, [id]: nextMuted }));
+    if (!nextMuted) element.play().catch(() => undefined);
   };
 
   const handleToggleSave = async (id) => {
@@ -341,19 +379,13 @@ function HomePage() {
                     }}
                     src={video.mediaUrl || video.thumbnailUrl}
                     poster={video.thumbnailUrl || video.mediaUrl}
-                    muted
+                    muted={mutedVideos[video.id] !== false}
                     autoPlay
                     loop
                     playsInline
                     preload="metadata"
                     className="h-full w-full object-cover"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      if (video.type === 'live') {
-                        navigate(`/live/${video.id}`);
-                        return;
-                      }
-                    }}
+                    onClick={(event) => handleVideoTap(event, video)}
                   />
                 ) : (
                   <img
@@ -372,6 +404,12 @@ function HomePage() {
 
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
 
+                {heartBurstVideoId === video.id ? (
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                    <span className="animate-ping text-7xl text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)]" aria-hidden="true">♥</span>
+                  </div>
+                ) : null}
+
                 <div className="absolute inset-x-0 top-3 flex items-center justify-between px-3 sm:top-4 sm:px-4">
                   <div className="flex items-center gap-2">
                     <span className="rounded-full border border-white/10 bg-slate-950/40 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-100 backdrop-blur-sm sm:px-2.5 sm:py-1 sm:text-[10px]">
@@ -384,7 +422,14 @@ function HomePage() {
                     ) : null}
                   </div>
                   {isVideoType(video) ? (
-                    <span className="rounded-full bg-slate-950/55 px-2.5 py-1 text-[10px] font-semibold text-white/90 backdrop-blur-sm">Autoplay</span>
+                    <button
+                      type="button"
+                      onClick={(event) => handleToggleSound(event, video.id)}
+                      className="rounded-full bg-slate-950/65 px-2.5 py-1 text-[10px] font-semibold text-white/90 backdrop-blur-sm"
+                      aria-label={mutedVideos[video.id] === false ? 'Mute video' : 'Unmute video'}
+                    >
+                      {mutedVideos[video.id] === false ? '🔊 Sound on' : '🔇 Tap for sound'}
+                    </button>
                   ) : <span className="rounded-full bg-slate-950/40 px-2.5 py-0.5 text-[9px] font-medium text-slate-200 backdrop-blur-sm sm:px-2.5 sm:py-1 sm:text-[10px]">{Number(video.views || 0).toLocaleString()} views</span>}
                 </div>
 
