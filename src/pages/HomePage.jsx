@@ -36,6 +36,7 @@ function HomePage() {
   const touchEndX = useRef(null);
   const videoRefs = useRef({});
   const viewedIds = useRef(new Set());
+  const viewTimers = useRef(new Map());
   const [mutedVideos, setMutedVideos] = useState({});
 
   useEffect(() => {
@@ -60,13 +61,35 @@ function HomePage() {
         const id = entry.target.dataset.videoId;
         const video = videoRefs.current[id];
         if (!video) return;
+
         if (entry.isIntersecting) {
-          if (!viewedIds.current.has(id)) {
-            viewedIds.current.add(id);
-            handleIncrementView(id);
+          if (!viewTimers.current.has(id)) {
+            const timer = window.setTimeout(() => {
+              if (!viewedIds.current.has(id)) {
+                viewedIds.current.add(id);
+                handleIncrementView(id);
+              }
+            }, 1800);
+            viewTimers.current.set(id, timer);
           }
+
+          Object.values(videoRefs.current).forEach((otherVideo) => {
+            if (otherVideo && otherVideo !== video && otherVideo.tagName === 'VIDEO') {
+              try {
+                otherVideo.pause();
+              } catch {
+                // ignore pause errors
+              }
+            }
+          });
+
           video.play().catch(() => undefined);
         } else {
+          const timer = viewTimers.current.get(id);
+          if (timer) {
+            window.clearTimeout(timer);
+            viewTimers.current.delete(id);
+          }
           try {
             video.pause();
           } catch {
@@ -74,17 +97,23 @@ function HomePage() {
           }
         }
       });
-    }, { threshold: 0.45 });
+    }, { threshold: 0.5 });
 
     videos.forEach((video) => {
       const element = videoRefs.current[video.id];
       if (element?.tagName === 'VIDEO') {
         element.dataset.videoId = video.id;
+        element.muted = true;
+        element.playsInline = true;
         observer.observe(element);
       }
     });
 
-    return () => observer.disconnect();
+    return () => {
+      viewTimers.current.forEach((timer) => window.clearTimeout(timer));
+      viewTimers.current.clear();
+      observer.disconnect();
+    };
   }, [videos]);
 
   const setVideoState = (id, updater) => {
@@ -121,8 +150,13 @@ function HomePage() {
   const handleToggleLike = async (id) => {
     try {
       const updated = await likeVideo(id);
-      setVideoState(id, (video) => ({ ...video, ...updated, liked: true }));
-      showMessage('You liked this post.');
+      setVideoState(id, (video) => ({
+        ...video,
+        ...updated,
+        liked: true,
+        likes: Number(updated?.likes ?? Number(video.likes || 0) + 1),
+      }));
+      showMessage(updated?.message || 'You liked this post.');
     } catch (err) {
       showMessage('Unable to like the post.');
     }
@@ -144,10 +178,12 @@ function HomePage() {
       const result = video.isFollowing
         ? await unfollowProfile(video.creatorUsername)
         : await followProfile(video.creatorUsername);
+      const nextFollowState = Boolean(result?.relationship?.isFollowing ?? !video.isFollowing);
       setVideoState(video.id, (current) => ({
         ...current,
-        isFollowing: Boolean(result?.relationship?.isFollowing ?? !video.isFollowing),
+        isFollowing: nextFollowState,
       }));
+      showMessage(nextFollowState ? 'Now following creator.' : 'Unfollowed creator.');
     } catch {
       showMessage('Unable to update follow state right now.');
     }
@@ -283,7 +319,7 @@ function HomePage() {
             videos.map((video) => (
               <article
                 key={video.id}
-                className="relative h-[68vh] overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:h-[calc(100vh-170px)] sm:rounded-[30px]"
+                className="relative h-[78vh] overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:h-[84vh] sm:rounded-[30px]"
                 onClick={() => {
                   if (video.type === 'live') {
                     navigate(`/live/${video.id}`);
@@ -305,7 +341,7 @@ function HomePage() {
                     }}
                     src={video.mediaUrl || video.thumbnailUrl}
                     poster={video.thumbnailUrl || video.mediaUrl}
-                    muted={mutedVideos[video.id] !== false}
+                    muted
                     autoPlay
                     loop
                     playsInline
@@ -348,9 +384,7 @@ function HomePage() {
                     ) : null}
                   </div>
                   {isVideoType(video) ? (
-                    <button type="button" onClick={(event) => { event.stopPropagation(); setMutedVideos((current) => ({ ...current, [video.id]: current[video.id] === false })); }} className="rounded-full bg-slate-950/55 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm" aria-label={mutedVideos[video.id] === false ? 'Mute video' : 'Unmute video'}>
-                      {mutedVideos[video.id] === false ? 'Sound on' : 'Muted'}
-                    </button>
+                    <span className="rounded-full bg-slate-950/55 px-2.5 py-1 text-[10px] font-semibold text-white/90 backdrop-blur-sm">Autoplay</span>
                   ) : <span className="rounded-full bg-slate-950/40 px-2.5 py-0.5 text-[9px] font-medium text-slate-200 backdrop-blur-sm sm:px-2.5 sm:py-1 sm:text-[10px]">{Number(video.views || 0).toLocaleString()} views</span>}
                 </div>
 
@@ -361,10 +395,11 @@ function HomePage() {
                       event.stopPropagation();
                       handleToggleLike(video.id);
                     }}
-                    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-slate-950/50 text-base text-white shadow-lg backdrop-blur-sm transition hover:scale-105 sm:h-12 sm:w-12 sm:text-lg"
+                    className="flex flex-col items-center gap-1 rounded-full border border-white/10 bg-slate-950/50 px-2 py-2 text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
                     aria-label="Like video"
                   >
-                    <span>{video.liked ? '♥' : '♡'}</span><small>{Number(video.likes || 0).toLocaleString()}</small>
+                    <span className="text-base sm:text-lg">{video.liked ? '♥' : '♡'}</span>
+                    <span className="text-[10px] font-medium text-slate-200">{Number(video.likes || 0).toLocaleString()}</span>
                   </button>
                   <button
                     type="button"
@@ -372,10 +407,11 @@ function HomePage() {
                       event.stopPropagation();
                       handleOpenComments(video);
                     }}
-                    className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-950/50 text-lg text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
+                    className="flex flex-col items-center gap-1 rounded-full border border-white/10 bg-slate-950/50 px-2 py-2 text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
                     aria-label="Comment on video"
                   >
-                    <span>💬</span><small>{Number(video.comments || 0).toLocaleString()}</small>
+                    <span className="text-base sm:text-lg">💬</span>
+                    <span className="text-[10px] font-medium text-slate-200">{Number(video.comments || 0).toLocaleString()}</span>
                   </button>
                   <button
                     type="button"
@@ -383,10 +419,11 @@ function HomePage() {
                       event.stopPropagation();
                       handleToggleSave(video.id);
                     }}
-                    className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-950/50 text-lg text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
+                    className="flex flex-col items-center gap-1 rounded-full border border-white/10 bg-slate-950/50 px-2 py-2 text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
                     aria-label="Save video"
                   >
-                    <span>{video.saved ? '✓' : '⎘'}</span><small>{Number(video.saves || video.savedCount || 0).toLocaleString()}</small>
+                    <span className="text-base sm:text-lg">{video.saved ? '✓' : '⎘'}</span>
+                    <span className="text-[10px] font-medium text-slate-200">{Number(video.saves || video.savedCount || 0).toLocaleString()}</span>
                   </button>
                   <button
                     type="button"
@@ -394,10 +431,11 @@ function HomePage() {
                       event.stopPropagation();
                       handleShare(video);
                     }}
-                    className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-950/50 text-lg text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
+                    className="flex flex-col items-center gap-1 rounded-full border border-white/10 bg-slate-950/50 px-2 py-2 text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
                     aria-label="Share video"
                   >
-                    <span>↗</span><small>{Number(video.shares || video.shareCount || 0).toLocaleString()}</small>
+                    <span className="text-base sm:text-lg">↗</span>
+                    <span className="text-[10px] font-medium text-slate-200">{Number(video.shares || video.shareCount || 0).toLocaleString()}</span>
                   </button>
                 </div>
 

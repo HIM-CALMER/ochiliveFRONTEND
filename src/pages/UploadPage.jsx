@@ -296,17 +296,28 @@ function UploadPage() {
     setCameraError('');
 
     const wantsAudio = mode === 'video' || activeTab === 'live';
+    const isPortraitMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     const requests = [
       {
         video: {
           facingMode: { ideal: facing },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: isPortraitMobile ? 720 : 1280 },
+          height: { ideal: isPortraitMobile ? 1280 : 720 },
+          aspectRatio: isPortraitMobile ? 9 / 16 : 16 / 9,
           frameRate: { ideal: 30 },
         },
         audio: wantsAudio,
       },
-      { video: { facingMode: { ideal: facing } }, audio: wantsAudio },
+      {
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: isPortraitMobile ? 720 : 1280 },
+          height: { ideal: isPortraitMobile ? 1280 : 720 },
+          aspectRatio: isPortraitMobile ? 9 / 16 : 16 / 9,
+        },
+        audio: wantsAudio,
+      },
+      { video: { facingMode: { ideal: facing }, aspectRatio: isPortraitMobile ? 9 / 16 : 16 / 9 }, audio: wantsAudio },
       { video: true, audio: wantsAudio },
     ];
 
@@ -796,7 +807,7 @@ function UploadPage() {
             }}
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
-            className={`up-mobile-stage relative min-h-0 flex-1 overflow-hidden bg-black transition-all duration-300 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink lg:rounded-[28px] lg:border lg:shadow-2xl lg:shadow-black/40 ${
+            className={`up-mobile-stage relative min-h-0 flex-1 overflow-hidden bg-black transition-all duration-300 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink lg:rounded-[28px] lg:border lg:shadow-2xl lg:shadow-black/40 lg:max-h-[78vh] lg:aspect-[9/16] lg:max-w-[420px] ${
               dragging ? 'lg:border-rose-400/60 lg:ring-2 lg:ring-rose-400/30' : 'lg:border-white/10'
             }`}
           >
