@@ -184,8 +184,8 @@ function ContentCard({ item, tab }) {
   const isVideo = (item.type === 'video') || isVideoUrl(mediaUrl);
 
   return (
-    <article className="group overflow-hidden rounded-[1.2rem] border border-slate-800 bg-slate-950 shadow-[0_14px_30px_rgba(2,6,23,0.18)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-700 hover:shadow-[0_20px_42px_rgba(2,6,23,0.24)] sm:rounded-[1.45rem] sm:shadow-[0_20px_48px_rgba(2,6,23,0.18)] sm:hover:shadow-[0_26px_62px_rgba(2,6,23,0.28)]">
-      <div className="relative overflow-hidden rounded-[1.2rem] bg-slate-900 sm:rounded-t-[1.45rem]">
+    <article className="group overflow-hidden bg-slate-950 shadow-[0_12px_26px_rgba(2,6,23,0.2)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(2,6,23,0.3)]">
+      <div className="relative aspect-[4/5] overflow-hidden bg-slate-900">
         <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-2 p-3 text-white">
           <div className="flex items-center gap-2 min-w-0">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950/70 text-[10px] font-bold text-white ring-1 ring-white/10">
@@ -219,15 +219,15 @@ function ContentCard({ item, tab }) {
               preload="metadata"
               playsInline
               muted
-              className="relative z-10 h-[52vh] min-h-[260px] w-full object-cover sm:h-72"
+              className="relative z-10 h-full w-full object-cover"
               src={mediaUrl}
               poster={item.thumbnailUrl || mediaUrl}
             />
           ) : (
-            <img src={mediaUrl} alt={item.title || 'post media'} className="relative z-10 h-[52vh] min-h-[260px] w-full object-cover sm:h-72" />
+            <img src={mediaUrl} alt={item.title || 'post media'} className="relative z-10 h-full w-full object-cover" />
           )
         ) : (
-          <div className="relative z-10 flex h-[52vh] min-h-[260px] items-center justify-center bg-slate-800 text-sm text-slate-400 sm:h-72">No preview available</div>
+          <div className="relative z-10 flex h-full items-center justify-center bg-slate-800 text-sm text-slate-400">No preview available</div>
         )}
 
         <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between p-3 text-[10px] uppercase tracking-[0.18em] text-white/80">
@@ -378,13 +378,13 @@ function ContentCard({ item, tab }) {
         </div>
       </div>
 
-      <div className="space-y-3 p-3 sm:p-4">
+      <div className="space-y-2 p-2 sm:p-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-lg font-semibold leading-tight text-white sm:text-xl">{item.title || 'Untitled post'}</p>
-            <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-300">{item.description || 'Creator post from Ochi Live.'}</p>
+            <p className="truncate text-sm font-semibold leading-tight text-white sm:text-base">{item.title || 'Untitled post'}</p>
+            <p className="mt-1 line-clamp-1 text-xs leading-5 text-slate-400">{item.description || 'Creator post from Ochi Live.'}</p>
           </div>
-          <span className="shrink-0 text-[11px] text-slate-400">{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Today'}</span>
+          <span className="shrink-0 text-[9px] text-slate-500">{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Today'}</span>
         </div>
 
         {!commentOpen && recentComments.length ? (
@@ -420,7 +420,7 @@ function ContentGrid({ items, tab, isOwnProfile }) {
   }
 
   return (
-    <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4" role="tabpanel">
+    <div className="mt-5 grid grid-cols-3 gap-1 sm:gap-2 lg:gap-3" role="tabpanel">
       {items.map((item) => (
         <ContentCard key={item.id} item={item} tab={tab} />
       ))}

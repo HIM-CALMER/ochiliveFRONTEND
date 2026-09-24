@@ -12,7 +12,14 @@ const parseResponse = async (response) => {
   try {
     return JSON.parse(text);
   } catch {
-    return { message: 'Server response was not valid JSON.', success: false };
+    const contentType = response.headers.get('content-type') || '';
+    const detail = contentType.includes('text/html')
+      ? 'The messages API returned an HTML page. Check that the backend API is running and the frontend proxy is configured.'
+      : text.slice(0, 180).replace(/\s+/g, ' ').trim();
+    return {
+      message: `Messages request failed (${response.status}). ${detail || 'The server returned an empty or invalid response.'}`,
+      success: false,
+    };
   }
 };
 

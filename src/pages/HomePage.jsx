@@ -45,6 +45,7 @@ function HomePage() {
   const [mutedVideos, setMutedVideos] = useState({});
   const [heartBurstVideoId, setHeartBurstVideoId] = useState(null);
   const [videoProgress, setVideoProgress] = useState({});
+  const [videoLoadState, setVideoLoadState] = useState({});
 
   useEffect(() => {
     setLoading(true);
@@ -70,6 +71,13 @@ function HomePage() {
         if (!video) return;
 
         if (entry.isIntersecting) {
+          if (!video.getAttribute('src')) {
+            const source = video.dataset.mediaSrc;
+            if (source) {
+              video.src = source;
+              video.load();
+            }
+          }
           if (!viewTimers.current.has(id)) {
             const timer = window.setTimeout(() => {
               if (!viewedIds.current.has(id)) {
@@ -106,6 +114,8 @@ function HomePage() {
           }
           try {
             video.pause();
+            video.removeAttribute('src');
+            video.load();
           } catch {
             // ignore playback pause errors
           }
@@ -214,10 +224,11 @@ function HomePage() {
       tapTimers.current.delete(video.id);
       const element = videoRefs.current[video.id];
       if (!element) return;
-      const nextMuted = !element.muted;
-      element.muted = nextMuted;
-      setMutedVideos((current) => ({ ...current, [video.id]: nextMuted }));
-      if (!nextMuted) element.play().catch(() => undefined);
+      if (element.paused) {
+        element.play().catch(() => undefined);
+      } else {
+        element.pause();
+      }
     }, 320);
     tapTimers.current.set(video.id, pendingTap);
   };
@@ -405,7 +416,7 @@ function HomePage() {
       ) : (
         <div className="max-h-[calc(100dvh-11rem)] space-y-3 overflow-y-auto overscroll-contain pr-1 snap-y snap-mandatory sm:max-h-[calc(100dvh-12rem)]">
           {videos.length ? (
-            videos.map((video, videoIndex) => (
+            videos.map((video) => (
               <article
                 key={video.id}
                 className="relative h-[78vh] snap-start overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:h-[84vh] sm:rounded-[30px]"
@@ -430,14 +441,17 @@ function HomePage() {
                     ref={(node) => {
                       if (node) videoRefs.current[video.id] = node;
                     }}
-                    src={video.mediaUrl || video.thumbnailUrl}
+                    data-media-src={video.mediaUrl || video.thumbnailUrl}
                     poster={video.thumbnailUrl || video.mediaUrl}
                     muted={mutedVideos[video.id] !== false}
                     autoPlay
                     loop
                     playsInline
-                    preload={videoIndex === 0 ? 'auto' : 'metadata'}
+                    preload="none"
                     className="h-full w-full object-cover"
+                    onLoadStart={() => setVideoLoadState((current) => ({ ...current, [video.id]: 'loading' }))}
+                    onCanPlay={() => setVideoLoadState((current) => ({ ...current, [video.id]: 'ready' }))}
+                    onError={() => setVideoLoadState((current) => ({ ...current, [video.id]: 'error' }))}
                     onLoadedMetadata={(event) => {
                       const savedPosition = playbackPositions.current.get(video.id);
                       if (savedPosition && savedPosition < event.currentTarget.duration - 0.5) {
@@ -467,6 +481,34 @@ function HomePage() {
                 )}
 
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+
+                {isVideoType(video) && videoLoadState[video.id] === 'loading' ? (
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                    <span className="h-9 w-9 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-label="Loading video" />
+                  </div>
+                ) : null}
+
+                {isVideoType(video) && videoLoadState[video.id] === 'error' ? (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/70 px-6 text-center backdrop-blur-sm">
+                    <div>
+                      <p className="text-sm font-semibold text-white">Video unavailable</p>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          const element = videoRefs.current[video.id];
+                          if (!element) return;
+                          setVideoLoadState((current) => ({ ...current, [video.id]: 'loading' }));
+                          element.load();
+                          element.play().catch(() => undefined);
+                        }}
+                        className="mt-3 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
 
                 {heartBurstVideoId === video.id ? (
                   <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
