@@ -34,6 +34,8 @@ function HomePage() {
   const [replyTarget, setReplyTarget] = useState(null);
   const touchStartX = useRef(null);
   const touchEndX = useRef(null);
+  const touchStartY = useRef(null);
+  const touchEndY = useRef(null);
   const videoRefs = useRef({});
   const viewedIds = useRef(new Set());
   const viewTimers = useRef(new Map());
@@ -146,9 +148,15 @@ function HomePage() {
   };
 
   const handleSwipe = () => {
-    if (touchStartX.current === null || touchEndX.current === null) return;
+    if (
+      touchStartX.current === null ||
+      touchEndX.current === null ||
+      touchStartY.current === null ||
+      touchEndY.current === null
+    ) return;
     const delta = touchStartX.current - touchEndX.current;
-    if (Math.abs(delta) < 50) return;
+    const verticalDelta = Math.abs(touchStartY.current - touchEndY.current);
+    if (Math.abs(delta) < 80 || Math.abs(delta) <= verticalDelta) return;
 
     const currentIndex = tabs.findIndex((tab) => tab.key === activeTab);
     if (delta > 0 && currentIndex < tabs.length - 1) {
@@ -157,6 +165,11 @@ function HomePage() {
     if (delta < 0 && currentIndex > 0) {
       setActiveTab(tabs[currentIndex - 1].key);
     }
+
+    touchStartX.current = null;
+    touchEndX.current = null;
+    touchStartY.current = null;
+    touchEndY.current = null;
   };
 
   const handleToggleLike = async (id) => {
@@ -353,9 +366,11 @@ function HomePage() {
         className="bg-transparent p-0"
         onTouchStart={(event) => {
           touchStartX.current = event.changedTouches[0].clientX;
+          touchStartY.current = event.changedTouches[0].clientY;
         }}
         onTouchEnd={(event) => {
           touchEndX.current = event.changedTouches[0].clientX;
+          touchEndY.current = event.changedTouches[0].clientY;
           handleSwipe();
         }}
       >
@@ -402,9 +417,11 @@ function HomePage() {
                 }}
                 onTouchStart={(event) => {
                   touchStartX.current = event.changedTouches[0].clientX;
+                  touchStartY.current = event.changedTouches[0].clientY;
                 }}
                 onTouchEnd={(event) => {
                   touchEndX.current = event.changedTouches[0].clientX;
+                  touchEndY.current = event.changedTouches[0].clientY;
                   handleSwipe();
                 }}
               >
