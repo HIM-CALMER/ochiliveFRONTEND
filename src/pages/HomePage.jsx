@@ -39,8 +39,10 @@ function HomePage() {
   const viewTimers = useRef(new Map());
   const lastVideoTap = useRef(new Map());
   const tapTimers = useRef(new Map());
+  const playbackPositions = useRef(new Map());
   const [mutedVideos, setMutedVideos] = useState({});
   const [heartBurstVideoId, setHeartBurstVideoId] = useState(null);
+  const [videoProgress, setVideoProgress] = useState({});
 
   useEffect(() => {
     setLoading(true);
@@ -86,8 +88,15 @@ function HomePage() {
             }
           });
 
+          const savedPosition = playbackPositions.current.get(id);
+          if (savedPosition && Number.isFinite(savedPosition) && video.duration && savedPosition < video.duration - 0.5) {
+            video.currentTime = savedPosition;
+          }
           video.play().catch(() => undefined);
         } else {
+          if (Number.isFinite(video.currentTime) && video.currentTime > 0) {
+            playbackPositions.current.set(id, video.currentTime);
+          }
           const timer = viewTimers.current.get(id);
           if (timer) {
             window.clearTimeout(timer);
@@ -317,6 +326,23 @@ function HomePage() {
       title="Discover every moment"
       subtitle="Browse the latest videos and photos from creators across the community."
     >
+      <style>{`
+        @keyframes feed-heart-burst {
+          0% { opacity: 0; transform: scale(.35) rotate(-10deg); }
+          20% { opacity: 1; transform: scale(1.18) rotate(0deg); }
+          62% { opacity: 1; transform: scale(1) rotate(0deg); }
+          100% { opacity: 0; transform: scale(1.35) rotate(8deg); }
+        }
+        @keyframes feed-photo-drift {
+          0%, 100% { transform: scale(1.02); }
+          50% { transform: scale(1.08); }
+        }
+        .feed-heart-burst { animation: feed-heart-burst .85s cubic-bezier(.2,.8,.2,1) both; }
+        .feed-photo-motion { animation: feed-photo-drift 12s ease-in-out infinite alternate; }
+        @media (prefers-reduced-motion: reduce) {
+          .feed-heart-burst, .feed-photo-motion { animation: none !important; }
+        }
+      `}</style>
       {message ? (
         <div className="rounded-2xl bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 ring-1 ring-emerald-500/20">
           {message}
@@ -362,12 +388,12 @@ function HomePage() {
           <p className="mt-3 text-sm text-slate-400">{error}</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="max-h-[calc(100dvh-11rem)] space-y-3 overflow-y-auto overscroll-contain pr-1 snap-y snap-mandatory sm:max-h-[calc(100dvh-12rem)]">
           {videos.length ? (
-            videos.map((video) => (
+            videos.map((video, videoIndex) => (
               <article
                 key={video.id}
-                className="relative h-[78vh] overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:h-[84vh] sm:rounded-[30px]"
+                className="relative h-[78vh] snap-start overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:h-[84vh] sm:rounded-[30px]"
                 onClick={() => {
                   if (video.type === 'live') {
                     navigate(`/live/${video.id}`);
@@ -393,15 +419,26 @@ function HomePage() {
                     autoPlay
                     loop
                     playsInline
-                    preload="metadata"
+                    preload={videoIndex === 0 ? 'auto' : 'metadata'}
                     className="h-full w-full object-cover"
-                    onClick={(event) => handleVideoTap(event, video)}
+                    onLoadedMetadata={(event) => {
+                      const savedPosition = playbackPositions.current.get(video.id);
+                      if (savedPosition && savedPosition < event.currentTarget.duration - 0.5) {
+                        event.currentTarget.currentTime = savedPosition;
+                      }
+                    }}
+                    onTimeUpdate={(event) => {
+                      const { currentTime, duration } = event.currentTarget;
+                      playbackPositions.current.set(video.id, currentTime);
+                      if (duration) setVideoProgress((current) => ({ ...current, [video.id]: currentTime / duration }));
+                    }}
+                    onPointerUp={(event) => handleVideoTap(event, video)}
                   />
                 ) : (
                   <img
                     src={getPreviewImage(video)}
                     alt={video.title}
-                    className="h-full w-full object-cover"
+                    className="feed-photo-motion h-full w-full object-cover"
                     onClick={(event) => {
                       event.stopPropagation();
                       if (video.type === 'live') {
@@ -416,7 +453,7 @@ function HomePage() {
 
                 {heartBurstVideoId === video.id ? (
                   <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-                    <span className="animate-ping text-7xl text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)]" aria-hidden="true">♥</span>
+                    <span className="feed-heart-burst text-8xl text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)]" aria-hidden="true">♥</span>
                   </div>
                 ) : null}
 
@@ -443,14 +480,14 @@ function HomePage() {
                   ) : <span className="rounded-full bg-slate-950/40 px-2.5 py-0.5 text-[9px] font-medium text-slate-200 backdrop-blur-sm sm:px-2.5 sm:py-1 sm:text-[10px]">{Number(video.views || 0).toLocaleString()} views</span>}
                 </div>
 
-                <div className="absolute bottom-4 right-3 z-10 flex flex-col items-center gap-2 sm:bottom-5 sm:right-4 sm:gap-3">
+                <div className="absolute bottom-14 right-3 z-10 flex flex-col items-center gap-2 sm:bottom-16 sm:right-4 sm:gap-3">
                   <button
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation();
                       handleToggleLike(video.id);
                     }}
-                    className="flex flex-col items-center gap-1 rounded-full border border-white/10 bg-slate-950/50 px-2 py-2 text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
+                    className={`flex min-w-12 flex-col items-center gap-1 rounded-2xl border px-2 py-2 text-white shadow-lg backdrop-blur-xl transition hover:scale-105 ${video.liked ? 'border-rose-300/40 bg-rose-500/20' : 'border-white/15 bg-slate-950/55'}`}
                     aria-label="Like video"
                   >
                     <span className="text-base sm:text-lg">{video.liked ? '♥' : '♡'}</span>
@@ -462,7 +499,7 @@ function HomePage() {
                       event.stopPropagation();
                       handleOpenComments(video);
                     }}
-                    className="flex flex-col items-center gap-1 rounded-full border border-white/10 bg-slate-950/50 px-2 py-2 text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
+                    className="flex min-w-12 flex-col items-center gap-1 rounded-2xl border border-white/15 bg-slate-950/55 px-2 py-2 text-white shadow-lg backdrop-blur-xl transition hover:scale-105"
                     aria-label="Comment on video"
                   >
                     <span className="text-base sm:text-lg">💬</span>
@@ -474,7 +511,7 @@ function HomePage() {
                       event.stopPropagation();
                       handleToggleSave(video.id);
                     }}
-                    className="flex flex-col items-center gap-1 rounded-full border border-white/10 bg-slate-950/50 px-2 py-2 text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
+                    className={`flex min-w-12 flex-col items-center gap-1 rounded-2xl border px-2 py-2 text-white shadow-lg backdrop-blur-xl transition hover:scale-105 ${video.saved ? 'border-emerald-300/40 bg-emerald-500/20' : 'border-white/15 bg-slate-950/55'}`}
                     aria-label="Save video"
                   >
                     <span className="text-base sm:text-lg">{video.saved ? '✓' : '⎘'}</span>
@@ -486,13 +523,22 @@ function HomePage() {
                       event.stopPropagation();
                       handleShare(video);
                     }}
-                    className="flex flex-col items-center gap-1 rounded-full border border-white/10 bg-slate-950/50 px-2 py-2 text-white shadow-lg backdrop-blur-sm transition hover:scale-105"
+                    className="flex min-w-12 flex-col items-center gap-1 rounded-2xl border border-white/15 bg-slate-950/55 px-2 py-2 text-white shadow-lg backdrop-blur-xl transition hover:scale-105"
                     aria-label="Share video"
                   >
                     <span className="text-base sm:text-lg">↗</span>
                     <span className="text-[10px] font-medium text-slate-200">{Number(video.shares || video.shareCount || 0).toLocaleString()}</span>
                   </button>
                 </div>
+
+                {isVideoType(video) ? (
+                  <div className="absolute inset-x-0 bottom-0 z-10 h-1 bg-white/15">
+                    <div
+                      className="h-full bg-white transition-[width] duration-200"
+                      style={{ width: `${Math.min(100, Math.max(0, (videoProgress[video.id] || 0) * 100))}%` }}
+                    />
+                  </div>
+                ) : null}
 
                 <div className="absolute inset-x-0 bottom-0 z-10 p-4 sm:p-5">
                   <div className="max-w-[78%]">

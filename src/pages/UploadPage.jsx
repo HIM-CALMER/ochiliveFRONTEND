@@ -156,6 +156,32 @@ const blobToDataUrl = (blob) =>
     reader.readAsDataURL(blob);
   });
 
+const compressImageFile = (file) => new Promise((resolve, reject) => {
+  const image = new Image();
+  const sourceUrl = URL.createObjectURL(file);
+  image.onload = () => {
+    const maxDimension = 1440;
+    const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      URL.revokeObjectURL(sourceUrl);
+      if (!blob) {
+        reject(new Error('Unable to optimize image.'));
+        return;
+      }
+      resolve(new File([blob], `optimized_${Date.now()}.jpg`, { type: 'image/jpeg' }));
+    }, 'image/jpeg', 0.82);
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(sourceUrl);
+    reject(new Error('Unable to read image.'));
+  };
+  image.src = sourceUrl;
+});
+
 function UploadPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -510,7 +536,9 @@ function UploadPage() {
     }
 
     const mimeType = getRecordingMimeType();
-    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const recorderOptions = { videoBitsPerSecond: 2_500_000, audioBitsPerSecond: 96_000 };
+    if (mimeType) recorderOptions.mimeType = mimeType;
+    const recorder = new MediaRecorder(stream, recorderOptions);
     const chunks = [];
     recorder.ondataavailable = (event) => {
       if (event.data.size) chunks.push(event.data);
@@ -548,22 +576,24 @@ function UploadPage() {
   const handleFileChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
+    const preparedFile = file.type.startsWith('image/') ? await compressImageFile(file) : file;
+    const url = URL.createObjectURL(preparedFile);
     setPreviewUrl(url);
-    setPreviewType(file.type.startsWith('image/') ? 'photo' : 'video');
+    setPreviewType(preparedFile.type.startsWith('image/') ? 'photo' : 'video');
     setScreen('preview');
     setStatus('Selected from gallery.');
   };
 
   /* drag & drop reuses the exact same selection logic */
-  const handleDrop = (event) => {
+  const handleDrop = async (event) => {
     event.preventDefault();
     setDragging(false);
     const file = event.dataTransfer?.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
+    const preparedFile = file.type.startsWith('image/') ? await compressImageFile(file) : file;
+    const url = URL.createObjectURL(preparedFile);
     setPreviewUrl(url);
-    setPreviewType(file.type.startsWith('image/') ? 'photo' : 'video');
+    setPreviewType(preparedFile.type.startsWith('image/') ? 'photo' : 'video');
     setScreen('preview');
     setStatus('Selected from gallery.');
   };
