@@ -504,10 +504,12 @@ function HomePage() {
                       event.stopPropagation();
                       handleToggleLike(video.id);
                     }}
-                    className={`flex min-w-12 flex-col items-center gap-1 rounded-2xl border px-2 py-2 text-white shadow-lg backdrop-blur-xl transition hover:scale-105 ${video.liked ? 'border-rose-300/40 bg-rose-500/20' : 'border-white/15 bg-slate-950/55'}`}
-                    aria-label="Like video"
+                    className={`flex min-w-14 flex-col items-center gap-1 rounded-2xl border px-2 py-2 text-white shadow-lg backdrop-blur-xl transition hover:scale-105 ${video.liked ? 'border-rose-300/60 bg-rose-500/25 text-rose-100 ring-1 ring-rose-300/30' : 'border-white/15 bg-slate-950/55'}`}
+                    aria-label={video.liked ? 'Liked video' : 'Like video'}
+                    aria-pressed={Boolean(video.liked)}
                   >
-                    <span className="text-base sm:text-lg">{video.liked ? '♥' : '♡'}</span>
+                    <span className={`text-lg leading-none transition-transform ${video.liked ? 'scale-110 text-rose-300' : 'text-white'}`}>{video.liked ? '♥' : '♡'}</span>
+                    {video.liked ? <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-rose-200">Liked</span> : null}
                     <span className="text-[10px] font-medium text-slate-200">{Number(video.likes || 0).toLocaleString()}</span>
                   </button>
                   <button
