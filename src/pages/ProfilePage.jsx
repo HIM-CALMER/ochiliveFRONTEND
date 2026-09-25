@@ -138,8 +138,9 @@ function ProfilePage() {
   };
 
   const handleMessage = () => {
-    if (!profile.user?.username) return;
-    navigate(`/messages?user=${encodeURIComponent(profile.user.username)}`);
+    if (!profile.user?.id && !profile.user?.username) return;
+    const target = profile.user.id || profile.user.username;
+    navigate(`/messages?user=${encodeURIComponent(target)}&username=${encodeURIComponent(profile.user.username || '')}`);
   };
 
   const handleRate = async (score) => {

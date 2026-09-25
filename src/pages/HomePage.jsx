@@ -22,6 +22,20 @@ const tabs = [
   { key: 'recent_live', label: 'Recent Live' },
 ];
 
+const FeedIcon = ({ type, active = false }) => {
+  const common = 'h-5 w-5';
+  if (type === 'like') {
+    return <svg viewBox="0 0 24 24" className={common} fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20.8 8.8c0 5.2-8.8 10.2-8.8 10.2S3.2 14 3.2 8.8A4.6 4.6 0 0 1 12 6.4a4.6 4.6 0 0 1 8.8 2.4Z" /></svg>;
+  }
+  if (type === 'comment') {
+    return <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 5.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H10l-5 3v-3.4a2 2 0 0 1-2-2v-7.6a2 2 0 0 1 2-2Z" /><path d="M8 10h8M8 13h5" /></svg>;
+  }
+  if (type === 'save') {
+    return <svg viewBox="0 0 24 24" className={common} fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 4.5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2V21l-6-3.7L6 21V4.5Z" /></svg>;
+  }
+  return <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m8 8 4-4 4 4" /><path d="M12 4v9" /><path d="M5 11v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>;
+};
+
 function HomePage() {
   const navigate = useNavigate();
   const [videos, setVideos] = useState([]);
@@ -47,11 +61,39 @@ function HomePage() {
   const [videoProgress, setVideoProgress] = useState({});
   const [videoLoadState, setVideoLoadState] = useState({});
 
+  const getLikedStorageKey = () => {
+    const userId = getStoredSession().user?.id || getStoredSession().user?.username || 'guest';
+    return `ochi-liked-videos:${userId}`;
+  };
+
+  const readLikedVideoIds = () => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(getLikedStorageKey()) || '[]');
+      return new Set(Array.isArray(stored) ? stored.map(String) : []);
+    } catch {
+      return new Set();
+    }
+  };
+
+  const rememberLikedVideo = (id) => {
+    try {
+      const likedIds = readLikedVideoIds();
+      likedIds.add(String(id));
+      localStorage.setItem(getLikedStorageKey(), JSON.stringify([...likedIds]));
+    } catch {
+      // Persistent UI state is best-effort when storage is unavailable.
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
     getVideoFeed(activeTab)
       .then((data) => {
-        setVideos(Array.isArray(data) ? data : []);
+        const likedIds = readLikedVideoIds();
+        setVideos(Array.isArray(data) ? data.map((video) => ({
+          ...video,
+          liked: Boolean(video.liked || likedIds.has(String(video.id))),
+        })) : []);
         setError('');
       })
       .catch(() => {
@@ -183,8 +225,11 @@ function HomePage() {
   };
 
   const handleToggleLike = async (id) => {
+    const previousVideo = videos.find((video) => video.id === id);
+    setVideoState(id, (video) => ({ ...video, liked: true, likes: Number(video.likes || 0) + (video.liked ? 0 : 1) }));
     try {
       const updated = await likeVideo(id);
+      rememberLikedVideo(id);
       setVideoState(id, (video) => ({
         ...video,
         ...updated,
@@ -193,6 +238,9 @@ function HomePage() {
       }));
       showMessage(updated?.message || 'You liked this post.');
     } catch (err) {
+      if (!previousVideo?.liked) {
+        setVideoState(id, (video) => ({ ...video, liked: false, likes: Math.max(0, Number(video.likes || 0) - 1) }));
+      }
       showMessage('Unable to like the post.');
     }
   };
@@ -550,7 +598,7 @@ function HomePage() {
                     aria-label={video.liked ? 'Liked video' : 'Like video'}
                     aria-pressed={Boolean(video.liked)}
                   >
-                    <span className={`text-lg leading-none transition-transform ${video.liked ? 'scale-110 text-rose-300' : 'text-white'}`}>{video.liked ? '♥' : '♡'}</span>
+                    <span className={`transition-transform ${video.liked ? 'scale-110 text-rose-300' : 'text-white'}`}><FeedIcon type="like" active={video.liked} /></span>
                     {video.liked ? <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-rose-200">Liked</span> : null}
                     <span className="text-[10px] font-medium text-slate-200">{Number(video.likes || 0).toLocaleString()}</span>
                   </button>
@@ -563,7 +611,7 @@ function HomePage() {
                     className="flex min-w-12 flex-col items-center gap-1 rounded-2xl border border-white/15 bg-slate-950/55 px-2 py-2 text-white shadow-lg backdrop-blur-xl transition hover:scale-105"
                     aria-label="Comment on video"
                   >
-                    <span className="text-base sm:text-lg">💬</span>
+                    <FeedIcon type="comment" />
                     <span className="text-[10px] font-medium text-slate-200">{Number(video.comments || 0).toLocaleString()}</span>
                   </button>
                   <button
@@ -575,7 +623,7 @@ function HomePage() {
                     className={`flex min-w-12 flex-col items-center gap-1 rounded-2xl border px-2 py-2 text-white shadow-lg backdrop-blur-xl transition hover:scale-105 ${video.saved ? 'border-emerald-300/40 bg-emerald-500/20' : 'border-white/15 bg-slate-950/55'}`}
                     aria-label="Save video"
                   >
-                    <span className="text-base sm:text-lg">{video.saved ? '✓' : '⎘'}</span>
+                    <span className={video.saved ? 'text-emerald-300' : 'text-white'}><FeedIcon type="save" active={video.saved} /></span>
                     <span className="text-[10px] font-medium text-slate-200">{Number(video.saves || video.savedCount || 0).toLocaleString()}</span>
                   </button>
                   <button
@@ -587,7 +635,7 @@ function HomePage() {
                     className="flex min-w-12 flex-col items-center gap-1 rounded-2xl border border-white/15 bg-slate-950/55 px-2 py-2 text-white shadow-lg backdrop-blur-xl transition hover:scale-105"
                     aria-label="Share video"
                   >
-                    <span className="text-base sm:text-lg">↗</span>
+                    <FeedIcon type="share" />
                     <span className="text-[10px] font-medium text-slate-200">{Number(video.shares || video.shareCount || 0).toLocaleString()}</span>
                   </button>
                 </div>

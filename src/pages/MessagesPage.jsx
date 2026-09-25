@@ -218,8 +218,9 @@ function MessagesPage() {
   }, [selectedConversation, directMessageTarget]);
 
   useEffect(() => {
-    const targetUsername = searchParams.get('user');
-    if (!targetUsername) {
+    const targetId = searchParams.get('user');
+    const targetUsername = searchParams.get('username') || targetId;
+    if (!targetId && !targetUsername) {
       setDirectMessageTarget(null);
       return;
     }
@@ -232,7 +233,7 @@ function MessagesPage() {
       }
     })();
 
-    if (targetUsername.toLowerCase() === String(sessionUser.username || '').toLowerCase()) {
+    if (targetUsername?.toLowerCase() === String(sessionUser.username || '').toLowerCase() || targetId === String(sessionUser.id || '')) {
       setDirectMessageTarget(null);
       return;
     }
@@ -244,7 +245,7 @@ function MessagesPage() {
         const user = data?.user || null;
         if (!user) return;
         setDirectMessageTarget({
-          id: user.id,
+          id: user.id || targetId,
           username: user.username,
           name: user.name,
           accountType: user.accountType,

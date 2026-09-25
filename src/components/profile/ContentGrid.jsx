@@ -49,6 +49,7 @@ function ContentCard({ item, tab }) {
   const [message, setMessage] = useState('');
   const [followingCreator, setFollowingCreator] = useState(Boolean(item.isFollowing || item.relationship?.isFollowing));
   const [followLoading, setFollowLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const recentComments = useMemo(() => {
     return commentThread
@@ -185,7 +186,7 @@ function ContentCard({ item, tab }) {
 
   return (
     <article className="group overflow-hidden bg-slate-950 shadow-[0_12px_26px_rgba(2,6,23,0.2)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(2,6,23,0.3)]">
-      <div className="relative aspect-[4/5] overflow-hidden bg-slate-900">
+      <div className="relative aspect-[3/4] cursor-zoom-in overflow-hidden bg-slate-900" onClick={() => setExpanded(true)}>
         <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-2 p-3 text-white">
           <div className="flex items-center gap-2 min-w-0">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-950/70 text-[10px] font-bold text-white ring-1 ring-white/10">
@@ -239,7 +240,7 @@ function ContentCard({ item, tab }) {
           </span>
         </div>
 
-        <div className="absolute bottom-3 right-3 z-20 flex flex-col gap-2">
+        <div className="hidden">
           <button type="button" onClick={handleLike} aria-label="Like this post" className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[8px] font-semibold uppercase tracking-[0.12em] backdrop-blur-sm transition ${liked ? 'border-rose-400/80 bg-rose-500/15 text-rose-200 shadow-[0_0_18px_rgba(251,113,133,0.3)]' : 'border-slate-700/80 bg-slate-950/70 text-white/90 hover:border-slate-500 hover:bg-slate-900'}`}>
             <svg viewBox="0 0 24 24" aria-hidden="true" className={`h-3.5 w-3.5 ${liked ? 'fill-rose-300' : 'fill-current'}`}>
               <path d="M12 21s-8.5-5.2-10.3-10A5.7 5.7 0 0 1 12 5.3a5.7 5.7 0 0 1 10.3 5.7C20.5 15.8 12 21 12 21Z" />
@@ -399,11 +400,23 @@ function ContentCard({ item, tab }) {
 
         <div className="flex items-center justify-between gap-3 pt-1 text-[11px] uppercase tracking-[0.14em] text-slate-500">
           <span>{item.creatorName || 'Ochi creator'}</span>
-          <span>{item.type || 'video'}</span>
+          <div className="flex items-center gap-3 normal-case tracking-normal">
+            <button type="button" onClick={handleLike} className={liked ? 'text-rose-300' : 'text-slate-400'} aria-label={liked ? 'Liked' : 'Like'}>{liked ? '♥' : '♡'} {likes}</button>
+            <button type="button" onClick={handleSave} className={saved ? 'text-amber-300' : 'text-slate-400'} aria-label={saved ? 'Saved' : 'Save'}>{saved ? 'Saved' : 'Save'}</button>
+            <button type="button" onClick={handleShare} className="text-slate-400" aria-label="Share">Share</button>
+          </div>
         </div>
 
         {message ? <p className="text-xs text-emerald-200">{message}</p> : null}
       </div>
+      {expanded ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3 sm:p-8" onClick={() => setExpanded(false)}>
+          <button type="button" onClick={() => setExpanded(false)} className="absolute right-4 top-4 z-10 border border-white/20 bg-black/60 px-3 py-2 text-sm font-semibold text-white">Close</button>
+          <div className="flex h-full w-full items-center justify-center" onClick={(event) => event.stopPropagation()}>
+            {isVideo ? <video controls autoPlay playsInline className="max-h-full max-w-full object-contain" src={mediaUrl} poster={item.thumbnailUrl || mediaUrl} /> : <img className="max-h-full max-w-full object-contain" src={mediaUrl} alt={item.title || 'post media'} />}
+          </div>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -420,7 +433,7 @@ function ContentGrid({ items, tab, isOwnProfile }) {
   }
 
   return (
-    <div className="mt-5 grid grid-cols-3 gap-1 sm:gap-2 lg:gap-3" role="tabpanel">
+    <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:gap-4" role="tabpanel">
       {items.map((item) => (
         <ContentCard key={item.id} item={item} tab={tab} />
       ))}
